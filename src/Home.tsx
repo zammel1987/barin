@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
-import { fmtDays, petStatus } from './logic'
-import { SPECIES, type Species } from './types'
+import { fmtAge, fmtDays, petGrowth, petStatus } from './logic'
+import { SPECIES, STAGES, type Species } from './types'
 import QuickLog from './QuickLog'
 
 export default function Home({ pets, records, reload, go }: Ctx) {
   const [filter, setFilter] = useState<Species | 'all'>('all')
   const list = pets
     .filter(p => filter === 'all' || p.species === filter)
-    .map(p => ({ p, s: petStatus(p, records) }))
+    .map(p => ({ p, s: petStatus(p, records), g: petGrowth(p, records) }))
     .sort((a, b) => Number(b.s.due) - Number(a.s.due))
   const dueCount = pets.filter(p => petStatus(p, records).due).length
 
@@ -25,12 +25,14 @@ export default function Home({ pets, records, reload, go }: Ctx) {
       </div>
       {list.length === 0 && <p className="empty">还没有宠物，点击下方按钮添加第一只吧。</p>}
       <div className="cards">
-        {list.map(({ p, s }) => (
+        {list.map(({ p, s, g }) => (
           <div key={p.id} className={`card ${s.due ? 'due' : ''}`}>
             <div className="card-main" onClick={() => go({ name: 'pet', id: p.id })}>
               <div className="avatar">{SPECIES[p.species].emoji}</div>
               <div className="grow">
-                <div className="name">{p.name} <span className="muted">{p.breed || SPECIES[p.species].label}</span></div>
+                <div className="name">{p.name} <span className="muted">{p.breed || SPECIES[p.species].label}</span>
+                  {g.stage && <span className={`stage ${g.stage}`}>{STAGES[g.stage]}{g.instar ? ` L${g.instar}` : ''}</span>}</div>
+                {g.ageDays != null && <div className="muted small">{g.estimated ? '约 ' : ''}{fmtAge(g.ageDays)}</div>}
                 <div className="stats">
                   <span className={s.due ? 'warn' : ''}>🍽️ {fmtDays(s.feedDays)}</span>
                   <span>💩 {fmtDays(s.poopDays)}</span>

@@ -1,4 +1,4 @@
-import type { LogRecord, Pet } from './types'
+import { SPECIES, type LogRecord, type Pet, type Stage } from './types'
 
 const DAY = 86400000
 export const daysSince = (t?: number) => (t == null ? null : Math.floor((Date.now() - t) / DAY))
@@ -50,4 +50,44 @@ export function petStatus(pet: Pet, records: LogRecord[]) {
 export function toLocalInput(t: number) {
   const d = new Date(t - new Date(t).getTimezoneOffset() * 60000)
   return d.toISOString().slice(0, 16)
+}
+
+const parseDate = (d: string) => new Date(d + 'T00:00:00').getTime()
+
+export function fmtAge(days: number) {
+  if (days < 0) return '—'
+  if (days < 60) return `${days} 天`
+  const months = Math.floor(days / 30.44)
+  if (months < 24) return `${months} 个月`
+  const y = Math.floor(months / 12), m = months % 12
+  return m ? `${y} 岁 ${m} 个月` : `${y} 岁`
+}
+
+// 年龄、龄期、成长阶段
+export function petGrowth(pet: Pet, records: LogRecord[]) {
+  const sp = SPECIES[pet.species]
+  const arthropod = pet.species !== 'snake'
+  const molts = records.filter(r => r.petId === pet.id && r.type === 'molt').sort((a, b) => a.at - b.at)
+  const acquired = parseDate(pet.acquiredAt)
+  const moltsSince = molts.filter(r => r.at >= acquired).length
+  const totalMolts = (pet.initialMolts ?? 0) + moltsSince
+  // 最近一次蜕皮记录手动填了龄期则以它为准
+  const lastWithInstar = [...molts].reverse().find(r => r.instar)
+  const instar = arthropod ? (lastWithInstar?.instar ?? totalMolts + 1) : undefined
+
+  let ageDays: number | null = null
+  let estimated = false
+  if (pet.hatchDate) ageDays = Math.floor((Date.now() - parseDate(pet.hatchDate)) / 864e5)
+  else if (arthropod && pet.initialMolts != null) {
+    // 入手前的年龄按平均蜕皮间隔估算
+    ageDays = Math.floor((Date.now() - acquired) / 864e5) + pet.initialMolts * sp.moltDays
+    estimated = true
+  }
+
+  let stage: Stage | undefined
+  if (arthropod) {
+    const adult = pet.adultInstar || sp.adultInstar
+    stage = pet.stageOverride ?? (instar! >= adult ? 'adult' : instar! >= adult - 2 ? 'subadult' : 'nymph')
+  }
+  return { ageDays, estimated, instar, totalMolts, stage, keptDays: Math.floor((Date.now() - acquired) / 864e5) }
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
 import { deletePet, putPet, uid } from './db'
-import { SPECIES, type Pet, type Species } from './types'
+import { SPECIES, STAGES, type Pet, type Species, type Stage } from './types'
 
 export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
   const [f, setF] = useState<Pet>(pet ?? {
@@ -43,6 +43,21 @@ export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
         </select>
       </label>
       <label>入手日期<input type="date" value={f.acquiredAt} onChange={e => set('acquiredAt', e.target.value)} /></label>
+      <label>出生/孵化日期（可选，知道的话年龄更准确）<input type="date" value={f.hatchDate ?? ''} onChange={e => set('hatchDate', e.target.value || undefined)} /></label>
+      {f.species !== 'snake' && <>
+        <label>入手时已蜕皮次数（L1 为刚孵化，蜕 4 次即 L5）
+          <input type="number" min={0} value={f.initialMolts ?? ''} onChange={e => set('initialMolts', e.target.value === '' ? undefined : Number(e.target.value))} placeholder="例如：4" />
+        </label>
+        <label>成体龄期（默认 L{SPECIES[f.species].adultInstar}，可按品种调整）
+          <input type="number" min={2} value={f.adultInstar ?? ''} onChange={e => set('adultInstar', e.target.value === '' ? undefined : Number(e.target.value))} placeholder={String(SPECIES[f.species].adultInstar)} />
+        </label>
+        <label>成长阶段
+          <select value={f.stageOverride ?? ''} onChange={e => set('stageOverride', (e.target.value || undefined) as Stage | undefined)}>
+            <option value="">按龄期自动判断</option>
+            {(Object.keys(STAGES) as Stage[]).map(k => <option key={k} value={k}>{STAGES[k]}</option>)}
+          </select>
+        </label>
+      </>}
       <label>喂食间隔（天）<input type="number" min={1} value={f.feedInterval} onChange={e => set('feedInterval', Number(e.target.value))} /></label>
       <label>备注<textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={3} /></label>
       <button className="primary" type="submit">保存</button>

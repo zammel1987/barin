@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { putRecord, uid } from './db'
-import { toLocalInput } from './logic'
+import { petGrowth, toLocalInput } from './logic'
+import { compressImage } from './photo'
 import { FEED_RESULTS, RECORD_TYPES, SPECIES, type FeedResult, type LogRecord, type Pet, type RecordType } from './types'
 
-export default function RecordForm({ pet, type, rec, onClose, reload }: {
-  pet: Pet; type: RecordType; rec?: LogRecord; onClose: () => void; reload: () => Promise<void>
+export default function RecordForm({ pet, records, type, rec, onClose, reload }: {
+  pet: Pet; records: LogRecord[]; type: RecordType; rec?: LogRecord; onClose: () => void; reload: () => Promise<void>
 }) {
+  const [busy, setBusy] = useState(false)
   const [r, setR] = useState<LogRecord>(rec ?? {
     id: uid(), petId: pet.id, type, at: Date.now(), note: '',
     ...(type === 'feed' && { food: SPECIES[pet.species].foods[0], quantity: 1, feedResult: 'eaten' as const }),
     ...(type === 'poop' && { poopNormal: true }),
-    ...(type === 'molt' && { moltComplete: true }),
+    ...(type === 'molt' && { moltComplete: true, instar: pet.species !== 'snake' ? petGrowth(pet, records).instar! + 1 : undefined }),
   })
   const set = <K extends keyof LogRecord>(k: K, v: LogRecord[K]) => setR(o => ({ ...o, [k]: v }))
   const isArthropod = pet.species !== 'snake'
@@ -61,10 +63,26 @@ export default function RecordForm({ pet, type, rec, onClose, reload }: {
 
         {type === 'weight' && <label>体重（克）<input type="number" step="0.1" min={0} required value={r.weight ?? ''} onChange={e => set('weight', e.target.value === '' ? undefined : Number(e.target.value))} /></label>}
 
+        <label>照片</label>
+        {r.photo ? (
+          <div className="photo-edit">
+            <img src={r.photo} alt="记录照片" />
+            <button type="button" className="ghost" onClick={() => set('photo', undefined)}>移除照片</button>
+          </div>
+        ) : (
+          <label className="ghost upload">{busy ? '处理中…' : '📷 拍照 / 选择照片'}
+            <input type="file" accept="image/*" hidden onChange={async e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setBusy(true)
+              try { set('photo', await compressImage(file)) } catch { alert('无法读取该图片') } finally { setBusy(false) }
+            }} />
+          </label>
+        )}
         <label>备注<textarea rows={3} value={r.note} onChange={e => set('note', e.target.value)} placeholder={type === 'poop' ? '颜色、形状、尿酸等' : ''} /></label>
         <div className="row">
           <button type="button" className="ghost grow" onClick={onClose}>取消</button>
-          <button type="submit" className="primary grow">保存</button>
+          <button type="submit" className="primary grow" disabled={busy}>保存</button>
         </div>
       </form>
     </div>
