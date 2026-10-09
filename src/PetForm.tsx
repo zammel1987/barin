@@ -62,6 +62,23 @@ export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
           </select>
         </label>
       </>}
+      {f.species === 'snake' && <>
+        <label>入手时大约月龄（不知道出生日期时用于估算年龄）
+          <NumInput value={f.initialAgeMonths} onChange={v => set('initialAgeMonths', v)} placeholder="例如：3" />
+        </label>
+        <label>入手前已蜕皮次数（可选）
+          <NumInput value={f.initialMolts} onChange={v => set('initialMolts', v)} placeholder="不知道可留空" />
+        </label>
+        <label>成体月龄（默认 {SPECIES.snake.adultMonths} 个月，可按品种调整）
+          <NumInput value={f.adultMonths} onChange={v => set('adultMonths', v)} placeholder={String(SPECIES.snake.adultMonths)} />
+        </label>
+        <label>成长阶段
+          <select value={f.stageOverride ?? ''} onChange={e => set('stageOverride', (e.target.value || undefined) as Stage | undefined)}>
+            <option value="">按年龄自动判断</option>
+            {(Object.keys(STAGES) as Stage[]).map(k => <option key={k} value={k}>{STAGES[k]}</option>)}
+          </select>
+        </label>
+      </>}
       <label>喂食间隔（天）<NumInput value={f.feedInterval} onChange={v => set('feedInterval', v ?? 0)} /></label>
       <label>备注<textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={3} /></label>
       <button className="primary" type="submit">保存</button>
