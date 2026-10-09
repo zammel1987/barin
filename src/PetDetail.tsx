@@ -56,7 +56,7 @@ export default function PetDetail({ pet, records, reload, go }: Ctx & { pet: Pet
           <div className="avatar big">{SPECIES[pet.species].emoji}</div>
           <div className="grow">
             <div className="muted">{SPECIES[pet.species].label}{pet.breed && ` · ${pet.breed}`}{pet.sex !== 'unknown' && ` · ${pet.sex === 'male' ? '公' : '母'}`}</div>
-            <div className="muted">入手 {pet.acquiredAt} · 每 {pet.feedInterval} 天喂食</div>
+            <div className="muted">入手 {pet.acquiredAt} · {s.interval.label}每 {s.interval.days} 天喂食</div>
           </div>
           <button className="ghost" onClick={() => go({ name: 'petForm', id: pet.id })}>编辑</button>
         </div>
