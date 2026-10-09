@@ -2,46 +2,65 @@ import { useState } from 'react'
 import type { Ctx } from './App'
 import { deleteRecords, putRecords, uid } from './db'
 import { NextFeed } from './Home'
-import { petStatus, recentFoods, type PetStatus } from './logic'
+import { fmtDays, petStatus, recentFoods, type CareType, type PetStatus } from './logic'
 import NumInput from './NumInput'
-import { FEED_RESULTS, SPECIES, type FeedResult, type LogRecord, type Pet } from './types'
+import { FEED_RESULTS, RECORD_TYPES, SPECIES, type FeedResult, type LogRecord, type Pet } from './types'
 
-type Mode = 'feed' | 'clean'
-type Group = 'overdue' | 'today' | 'tomorrow' | 'week' | 'later' | 'paused'
-const GROUPS: Record<Group, string> = { overdue: '已逾期', today: '今天', tomorrow: '明天', week: '7 天内', later: '之后', paused: '暂停中（蜕皮前期 / 硬化期 / 适应期等）' }
+type Mode = 'feed' | 'water' | 'mist' | 'clean'
+const MODES: Mode[] = ['feed', 'water', 'mist', 'clean']
+const FEED_GROUPS = { overdue: '已逾期', today: '今天', tomorrow: '明天', week: '7 天内', later: '之后', paused: '暂停中（蜕皮前期 / 硬化期 / 适应期等）' }
+const CARE_GROUPS = { due: '已到期', ok: '未到期', off: '未开启提醒' }
 const BATCH_RESULTS: FeedResult[] = ['eaten', 'refused', 'partial']
-interface Row { checked: boolean; food: string; quantity?: number; result: FeedResult }
+interface FeedRow { food: string; quantity?: number; result: FeedResult }
 
-function groupOf(s: PetStatus): Group {
+function feedGroup(s: PetStatus): keyof typeof FEED_GROUPS {
   if (s.pause || s.dueIn == null) return 'paused'
   if (s.dueIn < 0) return 'overdue'
   if (s.dueIn === 0) return 'today'
   if (s.dueIn === 1) return 'tomorrow'
   return s.dueIn <= 7 ? 'week' : 'later'
 }
+const careGroup = (s: PetStatus, t: CareType): keyof typeof CARE_GROUPS => (s.care[t].every <= 0 ? 'off' : s.care[t].due ? 'due' : 'ok')
+
+// 每种模式的分组和默认勾选
+function groupOf(mode: Mode, s: PetStatus): string {
+  if (mode === 'feed') return feedGroup(s)
+  if (mode === 'clean') return 'all'
+  return careGroup(s, mode)
+}
+function defaultChecked(mode: Mode, s: PetStatus) {
+  const g = groupOf(mode, s)
+  return mode === 'feed' ? g === 'overdue' || g === 'today' : g === 'due'
+}
+const groupLabels = (mode: Mode): Record<string, string> => (mode === 'feed' ? FEED_GROUPS : mode === 'clean' ? { all: '全部' } : CARE_GROUPS)
+
+function CareInfo({ s, t }: { s: PetStatus; t: CareType }) {
+  const c = s.care[t]
+  return <>上次 {fmtDays(c.days)}{c.every > 0 ? ` · 每 ${c.every} 天` : ''}</>
+}
 
 export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
   const items = pets.filter(p => !p.archivedAt).map(p => ({ p, s: petStatus(p, records) }))
   const [mode, setMode] = useState<Mode>('feed')
-  const defaultRow = (p: Pet, s: PetStatus): Row => {
+  // 勾选状态按模式分开保存；未操作过的用默认值
+  const [checks, setChecks] = useState<Record<string, boolean>>({})
+  const isChecked = (p: Pet, s: PetStatus) => checks[`${mode}:${p.id}`] ?? defaultChecked(mode, s)
+  const setChecked = (ids: string[], v: boolean) => setChecks(o => ({ ...o, ...Object.fromEntries(ids.map(id => [`${mode}:${id}`, v])) }))
+  // 喂食内容默认沿用每只上一次的食物
+  const [edits, setEdits] = useState<Record<string, Partial<FeedRow>>>({})
+  const feedRow = (p: Pet): FeedRow => {
     const last = recentFoods(p.id, records, 1)[0]
-    const g = groupOf(s)
-    return { checked: g === 'overdue' || g === 'today', food: last?.food ?? SPECIES[p.species].foods[0], quantity: last?.quantity ?? 1, result: 'eaten' }
+    return { food: last?.food ?? SPECIES[p.species].foods[0], quantity: last?.quantity ?? 1, result: 'eaten', ...edits[p.id] }
   }
-  const [stored, setRows] = useState<Record<string, Row>>(() => Object.fromEntries(items.map(({ p, s }) => [p.id, defaultRow(p, s)])))
-  // 打开后新出现的宠物（例如撤销了归档）用默认行，避免读到 undefined
-  const rows: Record<string, Row> = { ...Object.fromEntries(items.map(({ p, s }) => [p.id, { ...defaultRow(p, s), checked: false }])), ...stored }
+  const update = (id: string, patch: Partial<FeedRow>) => setEdits(o => ({ ...o, [id]: { ...o[id], ...patch } }))
   const [saving, setSaving] = useState(false)
-  const update = (id: string, patch: Partial<Row>) => setRows(o => ({ ...o, [id]: { ...rows[id], ...o[id], ...patch } }))
-  const grouped = (Object.keys(GROUPS) as Group[])
-    .map(g => ({ g, list: items.filter(x => groupOf(x.s) === g) }))
-    .filter(x => x.list.length)
-  const selected = items.filter(({ p }) => rows[p.id]?.checked)
 
-  function toggleGroup(list: { p: Pet }[]) {
-    const all = list.every(({ p }) => rows[p.id].checked)
-    setRows(o => ({ ...o, ...Object.fromEntries(list.map(({ p }) => [p.id, { ...rows[p.id], ...o[p.id], checked: !all }])) }))
-  }
+  const labels = groupLabels(mode)
+  const grouped = Object.keys(labels)
+    .map(g => ({ g, list: items.filter(x => groupOf(mode, x.s) === g) }))
+    .filter(x => x.list.length)
+  const selected = items.filter(({ p, s }) => isChecked(p, s))
+  const what = mode === 'feed' ? '喂食' : RECORD_TYPES[mode].label
 
   async function save() {
     if (!selected.length) return
@@ -50,8 +69,8 @@ export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
     setSaving(true)
     const at = Date.now()
     const rs: LogRecord[] = selected.map(({ p }) => {
-      const row = rows[p.id]
-      if (mode === 'clean') return { id: uid(), petId: p.id, type: 'clean', at, note: '' }
+      if (mode !== 'feed') return { id: uid(), petId: p.id, type: mode, at, note: '' }
+      const row = feedRow(p)
       const leftover = row.result === 'refused' || row.result === 'partial'
       return {
         id: uid(), petId: p.id, type: 'feed', at, note: '',
@@ -62,7 +81,7 @@ export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
     })
     await putRecords(rs)
     await reload()
-    toast({ text: `已为 ${rs.length} 只记录${mode === 'feed' ? '喂食' : '换水/清洁'}`, undo: async () => { await deleteRecords(rs.map(r => r.id)); await reload() } })
+    toast({ text: `已为 ${rs.length} 只记录${what}`, undo: async () => { await deleteRecords(rs.map(r => r.id)); await reload() } })
     go({ name: 'home' })
   }
 
@@ -71,45 +90,52 @@ export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
   return (
     <div className="batch">
       <div className="seg">
-        <button className={mode === 'feed' ? 'on' : ''} onClick={() => setMode('feed')}>🍽️ 喂食</button>
-        <button className={mode === 'clean' ? 'on' : ''} onClick={() => setMode('clean')}>💧 换水/清洁</button>
+        {MODES.map(m => (
+          <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'feed' ? '🍽️ 喂食' : `${RECORD_TYPES[m].emoji} ${RECORD_TYPES[m].label}`}</button>
+        ))}
       </div>
-      <p className="muted small">勾选要记录的宠物，时间记为现在。{mode === 'feed' && '食物默认沿用每只上一次的喂食。'}</p>
-      {grouped.map(({ g, list }) => (
-        <section key={g} className="panel">
-          <div className="row">
-            <h3 className="grow">{GROUPS[g]}（{list.length}）</h3>
-            <button className="ghost sm-btn" onClick={() => toggleGroup(list)}>{list.every(({ p }) => rows[p.id].checked) ? '全不选' : '全选'}</button>
-          </div>
-          {list.map(({ p, s }) => {
-            const row = rows[p.id]
-            return (
-              <div key={p.id} className={`batch-row ${row.checked ? 'on' : ''}`}>
-                <label className="check">
-                  <input type="checkbox" checked={row.checked} onChange={e => update(p.id, { checked: e.target.checked })} />
-                  <span className="grow"><b>{SPECIES[p.species].emoji} {p.name}</b> <span className="muted small"><NextFeed s={s} /></span></span>
-                </label>
-                {row.checked && mode === 'feed' && (
-                  <div className="batch-fields">
-                    <input list={`foods-${p.species}`} value={row.food} onChange={e => update(p.id, { food: e.target.value })} aria-label="食物" />
-                    <NumInput value={row.quantity} onChange={v => update(p.id, { quantity: v })} placeholder="数量" />
-                    <div className="seg small-seg">
-                      {BATCH_RESULTS.map(k => (
-                        <button type="button" key={k} className={row.result === k ? 'on' : ''} onClick={() => update(p.id, { result: k })}>{FEED_RESULTS[k]}</button>
-                      ))}
+      <p className="muted small">勾选要记录的宠物，时间记为现在。{mode === 'feed' ? '食物默认沿用每只上一次的喂食。' : mode !== 'clean' ? '已到期的默认勾选，间隔可在宠物资料里修改。' : ''}</p>
+      {grouped.map(({ g, list }) => {
+        const all = list.every(({ p, s }) => isChecked(p, s))
+        return (
+          <section key={g} className="panel">
+            <div className="row">
+              <h3 className="grow">{labels[g]}（{list.length}）</h3>
+              <button className="ghost sm-btn" onClick={() => setChecked(list.map(({ p }) => p.id), !all)}>{all ? '全不选' : '全选'}</button>
+            </div>
+            {list.map(({ p, s }) => {
+              const checked = isChecked(p, s)
+              const row = feedRow(p)
+              return (
+                <div key={p.id} className={`batch-row ${checked ? 'on' : ''}`}>
+                  <label className="check">
+                    <input type="checkbox" checked={checked} onChange={e => setChecked([p.id], e.target.checked)} />
+                    <span className="grow"><b>{SPECIES[p.species].emoji} {p.name}</b> <span className="muted small">
+                      {mode === 'feed' ? <NextFeed s={s} /> : mode === 'clean' ? null : <CareInfo s={s} t={mode} />}
+                    </span></span>
+                  </label>
+                  {checked && mode === 'feed' && (
+                    <div className="batch-fields">
+                      <input list={`foods-${p.species}`} value={row.food} onChange={e => update(p.id, { food: e.target.value })} aria-label="食物" />
+                      <NumInput value={row.quantity} onChange={v => update(p.id, { quantity: v })} placeholder="数量" />
+                      <div className="seg small-seg">
+                        {BATCH_RESULTS.map(k => (
+                          <button type="button" key={k} className={row.result === k ? 'on' : ''} onClick={() => update(p.id, { result: k })}>{FEED_RESULTS[k]}</button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </section>
-      ))}
+                  )}
+                </div>
+              )
+            })}
+          </section>
+        )
+      })}
       {(Object.keys(SPECIES) as (keyof typeof SPECIES)[]).map(k => (
         <datalist key={k} id={`foods-${k}`}>{SPECIES[k].foods.map(f => <option key={f} value={f} />)}</datalist>
       ))}
       <button className="primary sticky-save" disabled={!selected.length || saving} onClick={save}>
-        保存（{selected.length} 只）
+        保存{what}（{selected.length} 只）
       </button>
     </div>
   )

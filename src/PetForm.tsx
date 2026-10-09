@@ -5,6 +5,13 @@ import { localDate } from './logic'
 import NumInput from './NumInput'
 import { ARCHIVE_REASONS, SPECIES, STAGES, type ArchiveReason, type Pet, type Species, type Stage } from './types'
 
+// 加水/喷雾的默认说明（喷雾只针对需要的品种开启，过度喷雾加通风差对部分蜘蛛有害）
+const CARE_HINTS: Record<Species, string> = {
+  mantis: '螳螂多从喷雾水珠饮水，默认每 2 天喷雾；干燥地区品种可调长，雨林品种可调短。',
+  spider: '蜘蛛默认只提醒检查水盆（每 7 天）。喷雾默认关闭：多数地栖品种不需要，过度喷雾加通风差可能有害，需要时再按品种开启。',
+  snake: '蛇默认每 7 天换水；蜕皮期需要提高湿度时可临时开启喷雾。',
+}
+
 export default function PetForm({ pet, records, reload, go }: Ctx & { pet?: Pet }) {
   const [f, setF] = useState<Pet>(pet ?? {
     id: uid(), name: '', species: 'spider', breed: '', sex: 'unknown',
@@ -112,6 +119,16 @@ export default function PetForm({ pet, records, reload, go }: Ctx & { pet?: Pet 
           </label>
         ))}
       </div>
+      <label>加水/喷雾提醒间隔（天，0 为不提醒，留空按默认）</label>
+      <div className="intervals two">
+        <label>💧 加水/换水
+          <NumInput value={f.waterInterval} onChange={v => set('waterInterval', v)} placeholder={SPECIES[f.species].water ? String(SPECIES[f.species].water) : '0（不提醒）'} />
+        </label>
+        <label>💦 喷雾
+          <NumInput value={f.mistInterval} onChange={v => set('mistInterval', v)} placeholder={SPECIES[f.species].mist ? String(SPECIES[f.species].mist) : '0（不提醒）'} />
+        </label>
+      </div>
+      <p className="muted small">{CARE_HINTS[f.species]}</p>
       <details className="more">
         <summary>更多设置</summary>
         {f.species !== 'snake' && (

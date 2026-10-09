@@ -98,7 +98,8 @@ export const hardenDaysFor = (pet: Pet, stage: Stage | undefined) =>
   pet.species === 'snake' ? 0 : pet.hardenDays ?? SPECIES[pet.species].harden[stage ?? 'nymph']
 export const acclimDaysFor = (pet: Pet) => pet.acclimDays ?? SPECIES[pet.species].acclimDays
 
-export interface MoltEntry { id: string; at: number; instar?: number; gapDays: number | null; complete?: boolean; premoltDays: number | null }
+// water7/mist7：蜕皮前 7 天内的加水、喷雾次数（判断卡皮是否与湿度有关）
+export interface MoltEntry { id: string; at: number; instar?: number; gapDays: number | null; complete?: boolean; premoltDays: number | null; water7: number; mist7: number }
 
 // 蜕皮历史（时间正序），前期天数优先用手动标记算出的值，否则按蜕皮前连续拒食推算
 export function moltHistory(pet: Pet, records: LogRecord[]): MoltEntry[] {
@@ -117,7 +118,9 @@ export function moltHistory(pet: Pet, records: LogRecord[]): MoltEntry[] {
       }
       if (earliest) premoltDays = dayDiff(earliest.at, r.at)
     }
-    out.push({ id: r.id, at: r.at, instar: r.instar, gapDays: prev ? dayDiff(prev.at, r.at) : null, complete: r.moltComplete, premoltDays })
+    const weekBefore = addDays(r.at, -7)
+    const inWeek = (t: string) => rs.filter(x => x.type === t && x.at >= weekBefore && x.at <= r.at).length
+    out.push({ id: r.id, at: r.at, instar: r.instar, gapDays: prev ? dayDiff(prev.at, r.at) : null, complete: r.moltComplete, premoltDays, water7: inWeek('water'), mist7: inWeek('mist') })
     prev = r
   })
   return out
@@ -155,7 +158,18 @@ export interface Alert {
   code: string
   level: Level
   text: string
-  action?: { kind: 'markPremolt'; label: string; since: number } | { kind: 'preyRemoved'; label: string }
+  action?: { kind: 'markPremolt'; label: string; since: number } | { kind: 'preyRemoved'; label: string } | { kind: 'logCare'; label: string; type: CareType }
+}
+
+// 加水/喷雾：间隔为 0 表示不提醒；从未记录时按入手天数判断
+export type CareType = 'water' | 'mist'
+export interface CareStatus { every: number; days: number | null; due: boolean }
+export const careIntervalFor = (pet: Pet, type: CareType) =>
+  (type === 'water' ? pet.waterInterval : pet.mistInterval) ?? SPECIES[pet.species][type]
+function careStatus(pet: Pet, rs: LogRecord[], type: CareType, keptDays: number, now: number): CareStatus {
+  const every = careIntervalFor(pet, type)
+  const days = daysSince(rs.find(r => r.type === type)?.at, now)
+  return { every, days, due: every > 0 && (days == null ? keptDays >= every : days >= every) }
 }
 export type PauseKind = 'premolt' | 'hardening' | 'regurg' | 'acclim'
 export interface Pause { kind: PauseKind; since: number; until?: number; label: string }
@@ -176,8 +190,9 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
   const today = startOfDay(now)
   const acquired = acquiredOf(pet)
   const canMolt = !(pet.species === 'mantis' && g.stage === 'adult')
+  const care = { water: careStatus(pet, rs, 'water', g.keptDays, now), mist: careStatus(pet, rs, 'mist', g.keptDays, now) }
   const base = {
-    rs, g, interval, history, forecast, lastFeed, lastEaten, lastPoop, lastMolt,
+    rs, g, interval, history, forecast, lastFeed, lastEaten, lastPoop, lastMolt, care,
     feedDays: daysSince(lastFeed?.at, now), poopDays: daysSince(lastPoop?.at, now),
   }
   if (pet.archivedAt) return { ...base, nextDue: null, dueIn: null, due: false, pause: undefined, alerts: [] as Alert[] }
@@ -280,6 +295,14 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
     }
   }
   if (lastPoop && lastPoop.poopNormal === false) alerts.push({ code: 'poop-abnormal', level: 'warn', text: '最近一次排便异常' })
+
+  // 加水/喷雾只做信息提示，不标红（过度喷雾对部分蜘蛛有害）
+  const careText = (type: CareType, verb: string) => {
+    const c = care[type]
+    return c.days == null ? `还没有${verb}记录（每 ${c.every} 天）` : `该${verb}了（每 ${c.every} 天，上次 ${c.days} 天前）`
+  }
+  if (care.water.due) alerts.push({ code: 'water', level: 'info', text: careText('water', '加水/换水'), action: { kind: 'logCare', type: 'water', label: '已加水' } })
+  if (care.mist.due) alerts.push({ code: 'mist', level: 'info', text: careText('mist', '喷雾'), action: { kind: 'logCare', type: 'mist', label: '已喷雾' } })
 
   if (forecast && !pet.premoltSince) {
     if (forecast.state === 'window') alerts.push({ code: 'molt-soon', level: 'info', text: `可能临近蜕皮（预计 ${fmtMD(forecast.start)}–${fmtMD(forecast.end)}${forecast.reference ? '，参考值' : ''}）` })
