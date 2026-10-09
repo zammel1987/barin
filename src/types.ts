@@ -9,7 +9,8 @@ export interface Pet {
   breed: string
   sex: 'male' | 'female' | 'unknown'
   acquiredAt: string // YYYY-MM-DD
-  feedInterval: number // 天
+  feedInterval?: number // 旧版统一喂食间隔，已由 feedIntervals 取代，保留以兼容旧备份
+  feedIntervals?: Partial<Record<Stage, number>> // 各阶段喂食间隔（天），未填则用物种默认值
   notes: string
   createdAt: number
   hatchDate?: string // 出生/孵化日期，可空
@@ -40,10 +41,10 @@ export interface LogRecord {
 }
 
 // moltDays: 估算年龄用的平均蜕皮间隔；adultInstar: 默认成体龄期（L1 为孵化时）
-export const SPECIES: Record<Species, { label: string; emoji: string; interval: number; foods: string[]; moltDays: number; adultInstar: number; adultMonths: number }> = {
-  mantis: { label: '螳螂', emoji: '🦗', interval: 2, foods: ['果蝇', '蟋蟀', '蝗虫', '苍蝇', '蟑螂'], moltDays: 12, adultInstar: 8, adultMonths: 0 },
-  spider: { label: '蜘蛛', emoji: '🕷️', interval: 7, foods: ['蟋蟀', '杜比亚', '面包虫', '大麦虫', '樱桃红蟑螂'], moltDays: 45, adultInstar: 10, adultMonths: 0 },
-  snake: { label: '蛇', emoji: '🐍', interval: 10, foods: ['乳鼠', '跳鼠', '成鼠', '冻鼠', '小鸡'], moltDays: 0, adultInstar: 0, adultMonths: 24 },
+export const SPECIES: Record<Species, { label: string; emoji: string; intervals: Record<Stage, number>; foods: string[]; moltDays: number; adultInstar: number; adultMonths: number }> = {
+  mantis: { label: '螳螂', emoji: '🦗', intervals: { nymph: 2, subadult: 3, adult: 4 }, foods: ['果蝇', '蟋蟀', '蝗虫', '苍蝇', '蟑螂'], moltDays: 12, adultInstar: 8, adultMonths: 0 },
+  spider: { label: '蜘蛛', emoji: '🕷️', intervals: { nymph: 4, subadult: 7, adult: 14 }, foods: ['蟋蟀', '杜比亚', '面包虫', '大麦虫', '樱桃红蟑螂'], moltDays: 45, adultInstar: 10, adultMonths: 0 },
+  snake: { label: '蛇', emoji: '🐍', intervals: { nymph: 7, subadult: 10, adult: 14 }, foods: ['乳鼠', '跳鼠', '成鼠', '冻鼠', '小鸡'], moltDays: 0, adultInstar: 0, adultMonths: 24 },
 }
 
 export const RECORD_TYPES: Record<RecordType, { label: string; emoji: string }> = {

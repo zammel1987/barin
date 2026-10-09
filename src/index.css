@@ -92,3 +92,4 @@ main { padding: 12px 16px; }
 .cal-day.today { border-color: var(--accent); }
 .cal-day.sel { background: var(--accent); color: #fff; }
 .cal-icons { font-size: 10px; line-height: 1; min-height: 10px; }
+.intervals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

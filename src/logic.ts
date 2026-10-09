@@ -1,4 +1,4 @@
-import { SPECIES, type LogRecord, type Pet, type Stage } from './types'
+import { SPECIES, STAGES, type LogRecord, type Pet, type Stage } from './types'
 
 const DAY = 86400000
 export const daysSince = (t?: number) => (t == null ? null : Math.floor((Date.now() - t) / DAY))
@@ -21,8 +21,9 @@ export function petStatus(pet: Pet, records: LogRecord[]) {
   const feedDays = daysSince(lastFeed?.at)
   const warnings: string[] = []
 
-  const due = feedDays == null || feedDays >= pet.feedInterval
-  if (due) warnings.push(feedDays == null ? '还没有喂食记录' : `该喂了（间隔 ${pet.feedInterval} 天）`)
+  const interval = feedInterval(pet, petGrowth(pet, records).stage)
+  const due = feedDays == null || feedDays >= interval.days
+  if (due) warnings.push(feedDays == null ? '还没有喂食记录' : `该喂了（${interval.label}每 ${interval.days} 天）`)
 
   // 连续拒食：最近的喂食记录（蜕皮之后）全部为拒食
   let refusals = 0
@@ -44,7 +45,7 @@ export function petStatus(pet: Pet, records: LogRecord[]) {
   const lastAbnormalPoop = rs.find(r => r.type === 'poop')
   if (lastAbnormalPoop && lastAbnormalPoop.poopNormal === false) warnings.push('最近一次排便异常')
 
-  return { rs, lastFeed, lastPoop, lastMolt, feedDays, poopDays: daysSince(lastPoop?.at), due, warnings }
+  return { rs, interval, lastFeed, lastPoop, lastMolt, feedDays, poopDays: daysSince(lastPoop?.at), due, warnings }
 }
 
 export function toLocalInput(t: number) {
@@ -97,4 +98,11 @@ export function petGrowth(pet: Pet, records: LogRecord[]) {
     stage = pet.stageOverride ?? (ageDays == null ? undefined : ageDays >= adultDays ? 'adult' : ageDays >= adultDays / 2 ? 'subadult' : 'nymph')
   }
   return { ageDays, estimated, instar, totalMolts, stage, keptDays: Math.floor((Date.now() - acquired) / 864e5) }
+}
+
+// 当前阶段的喂食间隔；阶段未知（如蛇没填年龄）时按成体间隔
+export function feedInterval(pet: Pet, stage: Stage | undefined) {
+  const st = stage ?? 'adult'
+  const days = pet.feedIntervals?.[st] ?? SPECIES[pet.species].intervals[st]
+  return { days, stage: st, label: stage ? `${STAGES[st]}期` : '阶段未知，按成体' }
 }

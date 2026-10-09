@@ -7,14 +7,16 @@ import { SPECIES, STAGES, type Pet, type Species, type Stage } from './types'
 export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
   const [f, setF] = useState<Pet>(pet ?? {
     id: uid(), name: '', species: 'spider', breed: '', sex: 'unknown',
-    acquiredAt: new Date().toISOString().slice(0, 10), feedInterval: SPECIES.spider.interval, notes: '', createdAt: Date.now(),
+    acquiredAt: new Date().toISOString().slice(0, 10), notes: '', createdAt: Date.now(),
   })
   const set = <K extends keyof Pet>(k: K, v: Pet[K]) => setF(o => ({ ...o, [k]: v }))
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (!f.name.trim()) return
-    await putPet({ ...f, name: f.name.trim(), feedInterval: Math.max(1, f.feedInterval || 1) })
+    // 只保存填写了且 ≥1 的阶段间隔，其余沿用物种默认值
+    const feedIntervals = Object.fromEntries(Object.entries(f.feedIntervals ?? {}).filter(([, v]) => v != null && v >= 1))
+    await putPet({ ...f, name: f.name.trim(), feedIntervals })
     await reload()
     go({ name: 'pet', id: f.id })
   }
@@ -34,7 +36,7 @@ export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
       ) : <div className="seg">
         {(Object.keys(SPECIES) as Species[]).map(k => (
           <button type="button" key={k} className={f.species === k ? 'on' : ''}
-            onClick={() => setF(o => ({ ...o, species: k, feedInterval: SPECIES[k].interval }))}>
+            onClick={() => set('species', k)}>
             {SPECIES[k].emoji} {SPECIES[k].label}
           </button>
         ))}
@@ -79,7 +81,15 @@ export default function PetForm({ pet, reload, go }: Ctx & { pet?: Pet }) {
           </select>
         </label>
       </>}
-      <label>喂食间隔（天）<NumInput value={f.feedInterval} onChange={v => set('feedInterval', v ?? 0)} /></label>
+      <label>各阶段喂食间隔（天，留空使用默认值）</label>
+      <div className="intervals">
+        {(Object.keys(STAGES) as Stage[]).map(st => (
+          <label key={st}>{STAGES[st]}
+            <NumInput value={f.feedIntervals?.[st]} placeholder={String(SPECIES[f.species].intervals[st])}
+              onChange={v => set('feedIntervals', { ...f.feedIntervals, [st]: v })} />
+          </label>
+        ))}
+      </div>
       <label>备注<textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={3} /></label>
       <button className="primary" type="submit">保存</button>
       {pet && <button type="button" className="danger" onClick={remove}>删除宠物</button>}
