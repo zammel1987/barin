@@ -31,7 +31,7 @@ export default function Home({ pets, records, reload, go }: Ctx) {
               <div className="avatar">{SPECIES[p.species].emoji}</div>
               <div className="grow">
                 <div className="name">{p.name} <span className="muted">{p.breed || SPECIES[p.species].label}</span>
-                  {g.stage && <span className={`stage ${g.stage}`}>{STAGES[g.stage]}{g.instar ? ` L${g.instar}` : ''}</span>}</div>
+                  {g.stage && <span className={`stage ${g.stage}`}>{STAGES[g.stage]}{g.instar && g.stage !== 'adult' ? ` L${g.instar}` : ''}</span>}</div>
                 {g.ageDays != null && <div className="muted small">{g.estimated ? '约 ' : ''}{fmtAge(g.ageDays)}</div>}
                 <div className="stats">
                   <span className={s.due ? 'warn' : ''}>🍽️ {fmtDays(s.feedDays)}</span>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { putRecord, uid } from './db'
 import { petGrowth, toLocalInput } from './logic'
 import { compressImage } from './photo'
+import NumInput from './NumInput'
 import { FEED_RESULTS, RECORD_TYPES, SPECIES, type FeedResult, type LogRecord, type Pet, type RecordType } from './types'
 
 export default function RecordForm({ pet, records, type, rec, onClose, reload }: {
@@ -35,7 +36,7 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload }:
             <input list="foods" value={r.food ?? ''} onChange={e => set('food', e.target.value)} />
             <datalist id="foods">{SPECIES[pet.species].foods.map(f => <option key={f} value={f} />)}</datalist>
           </label>
-          <label>数量<input type="number" min={0} value={r.quantity ?? ''} onChange={e => set('quantity', e.target.value === '' ? undefined : Number(e.target.value))} /></label>
+          <label>数量<NumInput value={r.quantity} onChange={v => set('quantity', v)} /></label>
           <label>进食情况</label>
           <div className="seg">
             {(Object.keys(FEED_RESULTS) as FeedResult[]).map(k => (
@@ -53,7 +54,7 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload }:
         </>}
 
         {type === 'molt' && <>
-          {isArthropod && <label>蜕皮后龄期（L）<input type="number" min={1} value={r.instar ?? ''} onChange={e => set('instar', e.target.value === '' ? undefined : Number(e.target.value))} /></label>}
+          {isArthropod && <label>蜕皮后龄期（L）<NumInput value={r.instar} onChange={v => set('instar', v)} /></label>}
           <label>蜕皮是否完整</label>
           <div className="seg">
             <button type="button" className={r.moltComplete !== false ? 'on' : ''} onClick={() => set('moltComplete', true)}>完整</button>
@@ -61,7 +62,7 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload }:
           </div>
         </>}
 
-        {type === 'weight' && <label>体重（克）<input type="number" step="0.1" min={0} required value={r.weight ?? ''} onChange={e => set('weight', e.target.value === '' ? undefined : Number(e.target.value))} /></label>}
+        {type === 'weight' && <label>体重（克）<NumInput decimal required value={r.weight} onChange={v => set('weight', v)} /></label>}
 
         <label>照片</label>
         {r.photo ? (
