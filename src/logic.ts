@@ -82,12 +82,19 @@ export function petGrowth(pet: Pet, records: LogRecord[]) {
     // 入手前的年龄按平均蜕皮间隔估算
     ageDays = Math.floor((Date.now() - acquired) / 864e5) + pet.initialMolts * sp.moltDays
     estimated = true
+  } else if (!arthropod && pet.initialAgeMonths != null) {
+    ageDays = Math.floor((Date.now() - acquired) / 864e5) + Math.ceil(pet.initialAgeMonths * 30.44)
+    estimated = true
   }
 
   let stage: Stage | undefined
   if (arthropod) {
     const adult = pet.adultInstar || sp.adultInstar
     stage = pet.stageOverride ?? (instar! >= adult ? 'adult' : instar! >= adult - 2 ? 'subadult' : 'nymph')
+  } else {
+    // 蛇按年龄判断：达到成体月龄为成体，过半为亚成
+    const adultDays = (pet.adultMonths || sp.adultMonths) * 30.44
+    stage = pet.stageOverride ?? (ageDays == null ? undefined : ageDays >= adultDays ? 'adult' : ageDays >= adultDays / 2 ? 'subadult' : 'nymph')
   }
   return { ageDays, estimated, instar, totalMolts, stage, keptDays: Math.floor((Date.now() - acquired) / 864e5) }
 }

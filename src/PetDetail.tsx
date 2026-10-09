@@ -62,7 +62,8 @@ export default function PetDetail({ pet, records, reload, go }: Ctx & { pet: Pet
         </div>
         <div className="kv">
           <div><span>年龄{g.estimated ? '（估算）' : ''}</span><b>{g.ageDays != null ? fmtAge(g.ageDays) : `已养 ${fmtAge(g.keptDays)}`}</b></div>
-          {g.instar != null && <div><span>龄期</span><b>L{g.instar}</b></div>}
+          {g.instar != null && g.stage !== 'adult' && <div><span>龄期</span><b>L{g.instar}</b></div>}
+          {pet.species === 'snake' && <div><span>蜕皮次数</span><b>{g.totalMolts} 次</b></div>}
           {g.stage && <div><span>阶段</span><b><span className={`stage ${g.stage}`}>{STAGES[g.stage]}</span></b></div>}
           <div><span>上次喂食</span><b className={s.due ? 'warn' : ''}>{fmtDays(s.feedDays)}</b></div>
           <div><span>上次排便</span><b>{fmtDays(s.poopDays)}</b></div>
