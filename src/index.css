@@ -132,3 +132,6 @@ details.more[open] { display: grid; }
 .info-text { color: var(--accent); }
 .export-pet { width: 100%; margin-bottom: 12px; }
 .addrow { grid-template-columns: repeat(4, 1fr); }
+.premolt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.next.row { gap: 8px; }
+.next .primary.sm-btn { padding: 4px 12px; }

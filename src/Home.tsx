@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
 import Alerts from './Alerts'
+import PremoltActions from './PremoltActions'
 import { backupReminder, dismissBackupReminder, exportBackup } from './backup'
 import { fmtAge, fmtDays, fmtDue, petStatus, type PetStatus } from './logic'
 import { SPECIES, STAGES, type Pet, type Species } from './types'
@@ -87,7 +88,8 @@ function PetCard({ p, s, records, reload, toast, onOpen }: { p: Pet; s: PetStatu
               {(s.care.water.every > 0 || s.care.water.days != null) && <span>💧 {fmtDays(s.care.water.days)}</span>}
               {(s.care.mist.every > 0 || s.care.mist.days != null) && <span>💦 {fmtDays(s.care.mist.days)}</span>}
             </div>
-            <div className="next small"><NextFeed s={s} /></div>
+            <div className="next small row"><span className="grow"><NextFeed s={s} /></span>
+              <PremoltActions pet={p} records={records} reload={reload} toast={toast} compact /></div>
           </>}
           <Alerts alerts={s.alerts} pet={p} records={records} reload={reload} toast={toast} />
         </div>

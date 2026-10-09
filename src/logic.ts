@@ -337,3 +337,12 @@ export function firstMeal(pet: Pet, records: LogRecord[]) {
   const first = records.filter(r => r.petId === pet.id && r.type === 'feed' && r.feedResult !== 'refused' && r.at >= acquired).sort((a, b) => a.at - b.at)[0]
   return first ? { at: first.at, day: dayDiff(acquired, first.at) + 1 } : null
 }
+
+// 新蜕皮记录：节肢类龄期自动 +1；处于蜕皮前期时记下前期天数
+export function newMoltRecord(pet: Pet, records: LogRecord[], id: string, at = Date.now()): LogRecord {
+  return {
+    id, petId: pet.id, type: 'molt', at, note: '', moltComplete: true,
+    instar: pet.species !== 'snake' ? petGrowth(pet, records, at).instar! + 1 : undefined,
+    premoltDays: pet.premoltSince != null ? Math.max(0, dayDiff(pet.premoltSince, at)) : undefined,
+  }
+}

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ToastMsg } from './App'
-import { confirmFeed } from './actions'
-import { deleteRecord, getPet, putPet, putRecord, putRecordAndPet, uid } from './db'
-import { addDays, dayDiff, petGrowth, recentFoods, startOfDay, toLocalInput } from './logic'
+import { confirmFeed, saveMolt, undoMolt } from './actions'
+import { deleteRecord, putRecord, uid } from './db'
+import { addDays, dayDiff, newMoltRecord, recentFoods, startOfDay, toLocalInput } from './logic'
 import { compressImage } from './photo'
 import NumInput from './NumInput'
 import { FEED_RESULTS, RECORD_TYPES, SPECIES, type FeedResult, type LogRecord, type Pet, type RecordType } from './types'
@@ -14,13 +14,12 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload, t
   const foods = recentFoods(pet.id, records)
   const [busy, setBusy] = useState(false)
   const [qtyKey, setQtyKey] = useState(0) // 点食物快捷按钮时重建数量输入框
-  const [r, setR] = useState<LogRecord>(rec ?? {
+  const [r, setR] = useState<LogRecord>(rec ?? (type === 'molt' ? newMoltRecord(pet, records, uid()) : {
     id: uid(), petId: pet.id, type, at: Date.now(), note: '',
     // 喂食默认沿用这只上一次的食物和数量
     ...(type === 'feed' && { food: foods[0]?.food ?? SPECIES[pet.species].foods[0], quantity: foods[0]?.quantity ?? 1, feedResult: 'eaten' as const }),
     ...(type === 'poop' && { poopNormal: true }),
-    ...(type === 'molt' && { moltComplete: true, instar: isArthropod ? petGrowth(pet, records).instar! + 1 : undefined }),
-  })
+  }))
   const set = <K extends keyof LogRecord>(k: K, v: LogRecord[K]) => setR(o => ({ ...o, [k]: v }))
 
   function setResult(k: FeedResult) {
@@ -41,21 +40,19 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload, t
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (!rec && type === 'feed' && !confirmFeed(pet, records)) return
-    // 记录蜕皮时结束手动标记的蜕皮前期，并记下前期天数；记录和宠物在同一事务中写入
+    // 新蜕皮记录：结束蜕皮前期并按实际蜕皮时间记下前期天数
+    const isNewMolt = !rec && type === 'molt'
     const premoltSince = pet.premoltSince
-    const endsPremolt = !rec && type === 'molt' && premoltSince != null
-    const saved = endsPremolt ? { ...r, premoltDays: Math.max(0, dayDiff(premoltSince, r.at)) } : r
-    if (endsPremolt) await putRecordAndPet(saved, { ...pet, premoltSince: undefined })
+    const saved = isNewMolt && premoltSince != null ? { ...r, premoltDays: Math.max(0, dayDiff(premoltSince, r.at)) } : r
+    if (isNewMolt) await saveMolt(pet, saved)
     else await putRecord(saved)
     await reload()
     onClose()
     if (!rec) toast({
       text: `已记录${RECORD_TYPES[type].label}`,
       undo: async () => {
-        await deleteRecord(saved.id)
-        // 只恢复蜕皮前期这一项，读取最新的宠物资料，避免覆盖期间的其他修改
-        const cur = endsPremolt ? await getPet(pet.id) : undefined
-        if (cur) await putPet({ ...cur, premoltSince })
+        if (isNewMolt) await undoMolt(pet.id, saved.id, premoltSince)
+        else await deleteRecord(saved.id)
         await reload()
       },
     })

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
 import Alerts from './Alerts'
-import { endPremolt, markPremolt } from './actions'
 import { deleteRecord } from './db'
 import { withExport } from './loadExport'
 import { NextFeed } from './Home'
@@ -9,6 +8,7 @@ import { daysSince, fmtAge, fmtDays, fmtMD, fmtTime, firstMeal, petStatus } from
 import { ARCHIVE_REASONS, FEED_RESULTS, RECORD_TYPES, SPECIES, STAGES, type LogRecord, type Pet, type RecordType } from './types'
 import RecordForm from './RecordForm'
 import QuickLog from './QuickLog'
+import PremoltActions from './PremoltActions'
 import WeightChart from './WeightChart'
 
 export function describe(r: LogRecord) {
@@ -50,18 +50,12 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
   const types = (Object.keys(RECORD_TYPES) as RecordType[]).filter(t => pet.species === 'snake' || t !== 'weight' || weights.length)
   const meal = firstMeal(pet, records)
   const archived = !!pet.archivedAt
-  // 成年螳螂不再蜕皮，不提供标记；但已处于蜕皮前期时始终可以结束
-  const canPremolt = !archived && (pet.premoltSince != null || !(pet.species === 'mantis' && g.stage === 'adult'))
   const gaps = s.history.map(h => h.gapDays).filter((x): x is number => x != null)
   const avgGap = gaps.length ? Math.round(gaps.slice(-3).reduce((a, b) => a + b, 0) / Math.min(3, gaps.length)) : null
 
   async function del(r: LogRecord) {
     if (!confirm('删除这条记录？')) return
     await deleteRecord(r.id)
-    await reload()
-  }
-  async function togglePremolt() {
-    await (pet.premoltSince ? endPremolt(pet) : markPremolt(pet))
     await reload()
   }
 
@@ -91,9 +85,7 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
         </div>
         {!archived && <div className="next"><NextFeed s={s} /></div>}
         <Alerts alerts={s.alerts} pet={pet} records={records} reload={reload} toast={toast} />
-        {canPremolt && (
-          <button className="ghost sm-btn" onClick={togglePremolt}>{pet.premoltSince ? `✓ 结束${sp.premoltName}` : `⏳ 标记为${sp.premoltName}`}</button>
-        )}
+        {!archived && <PremoltActions pet={pet} records={records} reload={reload} toast={toast} />}
         {pet.notes && <p className="muted pre">{pet.notes}</p>}
       </section>
 
