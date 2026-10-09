@@ -17,7 +17,8 @@ export default function PremoltActions({ pet, records, reload, toast, compact }:
   async function run(fn: () => Promise<unknown>) {
     if (busy.current) return
     busy.current = true
-    try { await fn(); await reload() } finally { busy.current = false }
+    // 刷新后按钮会换成另一个（已蜕皮 ↔ 标记），保护期延长到界面更新之后，防止双击的第二下点到新按钮
+    try { await fn(); await reload() } finally { setTimeout(() => { busy.current = false }, 600) }
   }
   const molted = () => run(async () => {
     const { record, undo } = await quickMolt(pet, records)

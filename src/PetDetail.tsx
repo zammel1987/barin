@@ -110,7 +110,7 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
               {[...s.history].reverse().map((h, i) => (
                 <tr key={h.id}>
                   <td>{fmtMD(h.at)}</td>
-                  <td>{pet.species === 'snake' ? `第 ${s.history.length - i} 次` : h.instar ? `L${h.instar}` : '—'}</td>
+                  <td>{pet.species === 'snake' ? `第 ${(pet.initialMolts ?? 0) + s.history.length - i} 次` : h.instar ? `L${h.instar}` : '—'}</td>
                   <td>{h.gapDays != null ? `${h.gapDays} 天` : '—'}</td>
                   <td>{h.premoltDays != null ? `${h.premoltDays} 天` : '—'}</td>
                   <td className={h.complete === false ? 'warn' : ''}>{h.complete === false ? <>不完整<br /><span className="muted small">前 7 天喷雾 {h.mist7} 次、加水 {h.water7} 次</span></> : '完整'}</td>
