@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { ToastMsg } from './App'
 import { markPremolt, markPreyRemoved } from './actions'
 import { deleteRecord, putRecord, uid } from './db'
@@ -9,7 +10,13 @@ const ICONS = { info: 'ℹ️', warn: '⚠️', danger: '⛔' }
 export default function Alerts({ alerts, pet, records, reload, toast }: {
   alerts: Alert[]; pet: Pet; records: LogRecord[]; reload: () => Promise<void>; toast: (t: ToastMsg) => void
 }) {
+  const busy = useRef(false) // 防止连点重复记录
   async function act(a: Alert) {
+    if (busy.current) return
+    busy.current = true
+    try { await run(a) } finally { busy.current = false }
+  }
+  async function run(a: Alert) {
     const action = a.action
     if (action?.kind === 'markPremolt') await markPremolt(pet, action.since)
     else if (action?.kind === 'preyRemoved') await markPreyRemoved(pet, records)

@@ -195,7 +195,10 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
     rs, g, interval, history, forecast, lastFeed, lastEaten, lastPoop, lastMolt, care,
     feedDays: daysSince(lastFeed?.at, now), poopDays: daysSince(lastPoop?.at, now),
   }
-  if (pet.archivedAt) return { ...base, nextDue: null, dueIn: null, due: false, pause: undefined, alerts: [] as Alert[] }
+  if (pet.archivedAt) {
+    const off = (c: CareStatus) => ({ ...c, due: false })
+    return { ...base, care: { water: off(care.water), mist: off(care.mist) }, nextDue: null, dueIn: null, due: false, pause: undefined, alerts: [] as Alert[] }
+  }
 
   // —— 喂食到期引擎 ——
   const hardenDays = hardenDaysFor(pet, g.stage)

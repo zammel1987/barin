@@ -3,6 +3,7 @@ import type { Ctx } from './App'
 import Alerts from './Alerts'
 import { endPremolt, markPremolt } from './actions'
 import { deleteRecord } from './db'
+import { withExport } from './loadExport'
 import { NextFeed } from './Home'
 import { daysSince, fmtAge, fmtDays, fmtMD, fmtTime, firstMeal, petStatus } from './logic'
 import { ARCHIVE_REASONS, FEED_RESULTS, RECORD_TYPES, SPECIES, STAGES, type LogRecord, type Pet, type RecordType } from './types'
@@ -146,7 +147,7 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
         </ul>
       </section>
 
-      <button className="ghost export-pet" onClick={async () => (await import('./exportData')).exportXlsx([pet], records, `${pet.name}-记录`)}>
+      <button className="ghost export-pet" onClick={() => withExport(m => m.exportXlsx([pet], records, `${pet.name}-记录`), text => toast({ text }))}>
         📊 导出「{pet.name}」的记录（Excel）
       </button>
 

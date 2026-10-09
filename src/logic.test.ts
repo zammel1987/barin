@@ -262,3 +262,11 @@ describe('加水/喷雾', () => {
     expect(h[0]).toMatchObject({ mist7: 2, water7: 1 })
   })
 })
+
+describe('加水/喷雾（复查回归）', () => {
+  it('已归档的宠物不显示加水/喷雾到期', () => {
+    const s = petStatus(pet({ archivedAt: date(1) }), [rec({ type: 'water', at: at(30) })], NOW)
+    expect(s.care.water.due).toBe(false)
+    expect(s.care.water.days).toBe(30)
+  })
+})

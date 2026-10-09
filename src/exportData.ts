@@ -65,10 +65,21 @@ const csvCell = (v: Cell) => {
 export const toCsv = (rows: Cell[][]) => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n')
 
 // —— XLSX（Office Open XML）——
+// 去掉 XML 1.0 不允许的字符（控制字符、U+FFFE/U+FFFF、孤立的代理项），否则整个工作表无法打开
+const XML_ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
 const xmlEscape = (s: string) => s
-  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+  .replace(XML_ILLEGAL, '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const colName = (i: number) => { let s = ''; for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s }
+// Excel 单元格最多 32767 个字符，超出会提示文件损坏；截断时不拆开代理对
+const CELL_MAX = 32767
+const TRUNC_MARK = '…（已截断）'
+export function capCell(s: string) {
+  if (s.length <= CELL_MAX) return s
+  let end = CELL_MAX - TRUNC_MARK.length
+  if (/[\uD800-\uDBFF]/.test(s[end - 1])) end--
+  return s.slice(0, end) + TRUNC_MARK
+}
 // 中日韩字符按 2 个宽度估算列宽
 const textWidth = (v: Cell) => [...String(v ?? '')].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0)
 
@@ -80,7 +91,7 @@ function sheetXml(rows: Cell[][]) {
       const ref = `${colName(ci)}${ri + 1}`
       const style = ri === 0 ? ' s="1"' : ''
       if (typeof v === 'number' && Number.isFinite(v)) return `<c r="${ref}"${style}><v>${v}</v></c>`
-      return `<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(String(v))}</t></is></c>`
+      return `<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(capCell(String(v)))}</t></is></c>`
     }).join('')
     return `<row r="${ri + 1}">${cells}</row>`
   }).join('')

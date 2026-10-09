@@ -1,6 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { buildSheets, colName, PET_HEADER, RECORD_HEADER, recordRows, toCsv, toXlsx } from './exportData'
+import { buildSheets, capCell, colName, PET_HEADER, RECORD_HEADER, recordRows, toCsv, toXlsx } from './exportData'
 import type { LogRecord, Pet } from './types'
 
 const NOW = new Date(2026, 9, 9, 10, 0).getTime()
@@ -50,5 +50,23 @@ describe('XLSX', () => {
     expect(sheet2).toContain('<c r="G2"><v>2</v></c>')
     expect(sheet2).toContain('=1+1 &quot;引号&quot;, 逗号\n换行')
     expect(sheet2).not.toMatch(/[\u0000-\u0008]/)
+  })
+})
+
+describe('XLSX 边界情况（复查回归）', () => {
+  it('去掉 XML 不允许的字符：U+FFFE/U+FFFF 和孤立代理项，保留正常 emoji', () => {
+    const p2 = { ...pet, breed: 'a\uFFFEb\uFFFFc', notes: 'x\uD800y\uDC00z 🕷️' }
+    const sheet1 = strFromU8(unzipSync(toXlsx(buildSheets([p2], [], NOW)))['xl/worksheets/sheet1.xml'])
+    expect(sheet1).toContain('abc')
+    expect(sheet1).toContain('xyz 🕷️')
+    expect(sheet1).not.toMatch(/[\uFFFE\uFFFF]/)
+  })
+  it('超过 32767 字符的文本被截断，且不拆开 emoji', () => {
+    const long = 'a'.repeat(32760) + '🕷️'.repeat(10)
+    const c = capCell(long)
+    expect(c.length).toBeLessThanOrEqual(32767)
+    expect(c.endsWith('…（已截断）')).toBe(true)
+    expect(c).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+    expect(capCell('短文本')).toBe('短文本')
   })
 })

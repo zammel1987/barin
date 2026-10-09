@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Ctx } from './App'
 import { downloadBackup, exportBackup, getLastBackup } from './backup'
 import { importBackup, validateBackup } from './db'
+import { withExport } from './loadExport'
 import { fmtTime } from './logic'
 import { RECORD_TYPES, type LogRecord, type Pet, type RecordType } from './types'
 
@@ -76,14 +77,8 @@ export default function Settings({ pets, records, reload }: Ctx) {
   }
 
   // 导出模块按需加载
-  async function onExportSheet(kind: 'xlsx' | 'csv') {
-    try {
-      const m = await import('./exportData')
-      if (kind === 'xlsx') m.exportXlsx(pets, records)
-      else m.exportCsv(pets, records)
-    } catch (err) {
-      setMsg(`导出失败：${(err as Error).message}`)
-    }
+  function onExportSheet(kind: 'xlsx' | 'csv') {
+    return withExport(m => (kind === 'xlsx' ? m.exportXlsx(pets, records) : m.exportCsv(pets, records)), setMsg)
   }
 
   const mb = (n?: number) => (n == null ? '—' : `${(n / 1024 / 1024).toFixed(1)} MB`)
