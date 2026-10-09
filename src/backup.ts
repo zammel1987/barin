@@ -14,7 +14,10 @@ export function downloadBackup(pets: Pet[], records: LogRecord[], prefix = '爬�
   const a = document.createElement('a')
   a.href = url
   a.download = `${prefix}-${localDate()}.json`
+  // 部分浏览器要求链接在页面中，download 文件名才会生效
+  document.body.appendChild(a)
   a.click()
+  a.remove()
   // 留足时间给浏览器的下载确认（iOS 会先弹窗）
   setTimeout(() => URL.revokeObjectURL(url), 60000)
 }

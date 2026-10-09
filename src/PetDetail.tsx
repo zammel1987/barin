@@ -3,6 +3,7 @@ import type { Ctx } from './App'
 import Alerts from './Alerts'
 import { endPremolt, markPremolt } from './actions'
 import { deleteRecord } from './db'
+import { withExport } from './loadExport'
 import { NextFeed } from './Home'
 import { daysSince, fmtAge, fmtDays, fmtMD, fmtTime, firstMeal, petStatus } from './logic'
 import { ARCHIVE_REASONS, FEED_RESULTS, RECORD_TYPES, SPECIES, STAGES, type LogRecord, type Pet, type RecordType } from './types'
@@ -83,11 +84,13 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
           {g.stage && <div><span>阶段</span><b><span className={`stage ${g.stage}`}>{STAGES[g.stage]}</span></b></div>}
           <div><span>上次喂食</span><b className={s.due ? 'warn' : ''}>{fmtDays(s.feedDays)}</b></div>
           <div><span>上次排便</span><b>{fmtDays(s.poopDays)}</b></div>
+          {(s.care.water.every > 0 || s.care.water.days != null) && <div><span>上次加水{s.care.water.every > 0 ? `（每 ${s.care.water.every} 天）` : ''}</span><b className={s.care.water.due ? 'info-text' : ''}>{fmtDays(s.care.water.days)}</b></div>}
+          {(s.care.mist.every > 0 || s.care.mist.days != null) && <div><span>上次喷雾{s.care.mist.every > 0 ? `（每 ${s.care.mist.every} 天）` : ''}</span><b className={s.care.mist.due ? 'info-text' : ''}>{fmtDays(s.care.mist.days)}</b></div>}
           <div><span>上次蜕皮</span><b>{s.lastMolt ? fmtDays(daysSince(s.lastMolt.at)) : '无记录'}</b></div>
           {meal && pet.species === 'snake' && <div><span>开食</span><b>{fmtMD(meal.at)}（第 {meal.day} 天）</b></div>}
         </div>
         {!archived && <div className="next"><NextFeed s={s} /></div>}
-        <Alerts alerts={s.alerts} pet={pet} records={records} reload={reload} />
+        <Alerts alerts={s.alerts} pet={pet} records={records} reload={reload} toast={toast} />
         {canPremolt && (
           <button className="ghost sm-btn" onClick={togglePremolt}>{pet.premoltSince ? `✓ 结束${sp.premoltName}` : `⏳ 标记为${sp.premoltName}`}</button>
         )}
@@ -118,7 +121,7 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
                   <td>{pet.species === 'snake' ? `第 ${s.history.length - i} 次` : h.instar ? `L${h.instar}` : '—'}</td>
                   <td>{h.gapDays != null ? `${h.gapDays} 天` : '—'}</td>
                   <td>{h.premoltDays != null ? `${h.premoltDays} 天` : '—'}</td>
-                  <td className={h.complete === false ? 'warn' : ''}>{h.complete === false ? '不完整' : '完整'}</td>
+                  <td className={h.complete === false ? 'warn' : ''}>{h.complete === false ? <>不完整<br /><span className="muted small">前 7 天喷雾 {h.mist7} 次、加水 {h.water7} 次</span></> : '完整'}</td>
                 </tr>
               ))}
             </tbody>
@@ -143,6 +146,10 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
           ))}
         </ul>
       </section>
+
+      <button className="ghost export-pet" onClick={() => withExport(m => m.exportXlsx([pet], records, `${pet.name}-记录`), text => toast({ text }))}>
+        📊 导出「{pet.name}」的记录（Excel）
+      </button>
 
       {editing && <RecordForm pet={pet} records={records} type={editing.type} rec={editing.rec} onClose={() => setEditing(null)} reload={reload} toast={toast} />}
     </>

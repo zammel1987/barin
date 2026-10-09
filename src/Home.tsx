@@ -14,7 +14,7 @@ export function NextFeed({ s }: { s: PetStatus }) {
   return <span className={s.dueIn <= 0 ? 'warn' : ''}>下次喂食：{fmtDue(s.dueIn, s.nextDue)}</span>
 }
 
-export default function Home({ pets, records, reload, go }: Ctx) {
+export default function Home({ pets, records, reload, go, toast }: Ctx) {
   const [filter, setFilter] = useState<Species | 'all' | 'archived'>('all')
   const [sort, setSort] = useState<Sort>('todo')
   const [, setTick] = useState(0)
@@ -62,14 +62,14 @@ export default function Home({ pets, records, reload, go }: Ctx) {
       )}
       {list.length === 0 && <p className="empty">{filter === 'archived' ? '没有已归档的宠物' : '还没有宠物，点击下方按钮添加第一只吧。'}</p>}
       <div className="cards">
-        {list.map(({ p, s }) => <PetCard key={p.id} p={p} s={s} records={records} reload={reload} onOpen={() => go({ name: 'pet', id: p.id })} />)}
+        {list.map(({ p, s }) => <PetCard key={p.id} p={p} s={s} records={records} reload={reload} toast={toast} onOpen={() => go({ name: 'pet', id: p.id })} />)}
       </div>
       <button className="fab" onClick={() => go({ name: 'petForm' })}>＋ 添加宠物</button>
     </>
   )
 }
 
-function PetCard({ p, s, records, reload, onOpen }: { p: Pet; s: PetStatus; records: Ctx['records']; reload: Ctx['reload']; onOpen: () => void }) {
+function PetCard({ p, s, records, reload, toast, onOpen }: { p: Pet; s: PetStatus; records: Ctx['records']; reload: Ctx['reload']; toast: Ctx['toast']; onOpen: () => void }) {
   const g = s.g
   const f = s.forecast
   return (
@@ -84,10 +84,12 @@ function PetCard({ p, s, records, reload, onOpen }: { p: Pet; s: PetStatus; reco
             <div className="stats">
               <span>🍽️ {fmtDays(s.feedDays)}</span>
               <span>💩 {fmtDays(s.poopDays)}</span>
+              {(s.care.water.every > 0 || s.care.water.days != null) && <span>💧 {fmtDays(s.care.water.days)}</span>}
+              {(s.care.mist.every > 0 || s.care.mist.days != null) && <span>💦 {fmtDays(s.care.mist.days)}</span>}
             </div>
             <div className="next small"><NextFeed s={s} /></div>
           </>}
-          <Alerts alerts={s.alerts} pet={p} records={records} reload={reload} />
+          <Alerts alerts={s.alerts} pet={p} records={records} reload={reload} toast={toast} />
         </div>
       </div>
     </div>

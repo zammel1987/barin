@@ -128,3 +128,7 @@ details.more[open] { display: grid; }
 .sticky-save { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; width: min(92vw, 600px); z-index: 5; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 .sticky-save:disabled { opacity: .5; }
 .form-actions { margin-top: 12px; }
+.intervals.two { grid-template-columns: repeat(2, 1fr); }
+.info-text { color: var(--accent); }
+.export-pet { width: 100%; margin-bottom: 12px; }
+.addrow { grid-template-columns: repeat(4, 1fr); }

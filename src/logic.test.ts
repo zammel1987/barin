@@ -235,3 +235,38 @@ describe('复查发现的问题（回归测试）', () => {
     expect(dayDiff(NOW, t)).toBe(3)
   })
 })
+
+describe('加水/喷雾', () => {
+  it('按物种默认：蜘蛛每 7 天加水、不提醒喷雾；螳螂每 2 天喷雾、不提醒加水', () => {
+    const spider = petStatus(pet(), [rec({ type: 'water', at: at(8) })], NOW)
+    expect(spider.care.water).toMatchObject({ every: 7, days: 8, due: true })
+    expect(spider.care.mist.every).toBe(0)
+    const a = spider.alerts.find(x => x.code === 'water')!
+    expect(a.level).toBe('info')
+    expect(a.action).toMatchObject({ kind: 'logCare', type: 'water' })
+    const mantis = petStatus(pet({ species: 'mantis' }), [rec({ type: 'mist', at: at(1) })], NOW)
+    expect(mantis.care.mist).toMatchObject({ every: 2, due: false })
+    expect(mantis.care.water.every).toBe(0)
+  })
+  it('个体设置覆盖默认，0 为关闭', () => {
+    const s = petStatus(pet({ waterInterval: 0, mistInterval: 3 }), [], NOW)
+    expect(s.care.water.due).toBe(false)
+    expect(s.care.mist).toMatchObject({ every: 3, due: true }) // 入手 200 天且从未喷雾
+    expect(s.alerts.find(x => x.code === 'mist')?.text).toContain('还没有喷雾记录')
+  })
+  it('刚入手、未到间隔时不提醒', () => {
+    expect(petStatus(pet({ acquiredAt: date(2) }), [], NOW).care.water.due).toBe(false)
+  })
+  it('蜕皮历史统计蜕皮前 7 天的喷雾和加水次数', () => {
+    const h = moltHistory(pet(), [rec({ type: 'mist', at: at(12) }), rec({ type: 'mist', at: at(8) }), rec({ type: 'mist', at: at(6) }), rec({ type: 'water', at: at(5) }), molt(4, { moltComplete: false })])
+    expect(h[0]).toMatchObject({ mist7: 2, water7: 1 })
+  })
+})
+
+describe('加水/喷雾（复查回归）', () => {
+  it('已归档的宠物不显示加水/喷雾到期', () => {
+    const s = petStatus(pet({ archivedAt: date(1) }), [rec({ type: 'water', at: at(30) })], NOW)
+    expect(s.care.water.due).toBe(false)
+    expect(s.care.water.days).toBe(30)
+  })
+})

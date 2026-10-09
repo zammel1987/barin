@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Ctx } from './App'
 import { downloadBackup, exportBackup, getLastBackup } from './backup'
 import { importBackup, validateBackup } from './db'
+import { withExport } from './loadExport'
 import { fmtTime } from './logic'
 import { RECORD_TYPES, type LogRecord, type Pet, type RecordType } from './types'
 
@@ -75,6 +76,11 @@ export default function Settings({ pets, records, reload }: Ctx) {
     setPreview(null)
   }
 
+  // 导出模块按需加载
+  function onExportSheet(kind: 'xlsx' | 'csv') {
+    return withExport(m => (kind === 'xlsx' ? m.exportXlsx(pets, records) : m.exportCsv(pets, records)), setMsg)
+  }
+
   const mb = (n?: number) => (n == null ? '—' : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
   return (
@@ -88,6 +94,13 @@ export default function Settings({ pets, records, reload }: Ctx) {
         <button className="ghost" onClick={() => file.current?.click()}>从备份导入</button>
         <input ref={file} type="file" accept="application/json,.json" hidden onChange={onFile} />
         {msg && <p className="alert info">{msg}</p>}
+      </section>
+      <section className="panel">
+        <h3>导出表格</h3>
+        <p className="muted">导出后可用 Excel、WPS 或 Numbers 打开，方便排序、筛选、打印或转让时交给买家。表格只用于查看，不能用来恢复数据，备份请用上面的 JSON。</p>
+        <button className="ghost" disabled={!pets.length} onClick={() => onExportSheet('xlsx')}>📊 导出 Excel（宠物 + 全部记录）</button>
+        <button className="ghost" disabled={!records.length} onClick={() => onExportSheet('csv')}>导出 CSV（全部记录）</button>
+        <p className="muted small">单只宠物的记录可在宠物详情页底部导出。照片不包含在表格中。</p>
       </section>
       <section className="panel">
         <h3>存储状态</h3>
