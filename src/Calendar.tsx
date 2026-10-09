@@ -6,7 +6,7 @@ import { RECORD_TYPES, type LogRecord } from './types'
 
 const dayKey = (t: number | Date) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
 
-export default function Calendar({ pets, records, reload, go }: Ctx) {
+export default function Calendar({ pets, records, reload, go, toast }: Ctx) {
   const now = new Date()
   const [month, setMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1))
   const [selected, setSelected] = useState(dayKey(now))
@@ -66,7 +66,7 @@ export default function Calendar({ pets, records, reload, go }: Ctx) {
         </ul>
       </section>
       {pets.length === 0 && <button className="ghost" onClick={() => go({ name: 'petForm' })}>先添加宠物</button>}
-      {editing && editPet && <RecordForm pet={editPet} records={records} type={editing.type} rec={editing} onClose={() => setEditing(null)} reload={reload} />}
+      {editing && editPet && <RecordForm pet={editPet} records={records} type={editing.type} rec={editing} onClose={() => setEditing(null)} reload={reload} toast={toast} />}
     </>
   )
 }
