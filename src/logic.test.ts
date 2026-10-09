@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { validateBackup } from './db'
-import { addDays, dayDiff, firstMeal, fmtDue, localDate, moltHistory, petStatus, recentFoods } from './logic'
+import { addDays, dayDiff, firstMeal, fmtDue, localDate, moltHistory, newMoltRecord, petStatus, recentFoods } from './logic'
 import type { LogRecord, Pet } from './types'
 
 // 固定“现在”：2026-10-09 10:00（本地时间）
@@ -268,5 +268,24 @@ describe('加水/喷雾（复查回归）', () => {
     const s = petStatus(pet({ archivedAt: date(1) }), [rec({ type: 'water', at: at(30) })], NOW)
     expect(s.care.water.due).toBe(false)
     expect(s.care.water.days).toBe(30)
+  })
+})
+
+describe('一键记录蜕皮', () => {
+  it('节肢类龄期自动 +1，并记下蜕皮前期天数', () => {
+    const p = pet({ initialMolts: 3, premoltSince: at(12) }) // 当前 L4
+    const r = newMoltRecord(p, [], 'm1', NOW)
+    expect(r).toMatchObject({ type: 'molt', instar: 5, moltComplete: true, premoltDays: 12 })
+  })
+  it('以最近一次填写的龄期为准继续 +1', () => {
+    const r = newMoltRecord(pet({ initialMolts: 1 }), [molt(30, { instar: 6 })], 'm2', NOW)
+    expect(r.instar).toBe(7)
+    expect(r.premoltDays).toBeUndefined()
+  })
+  it('蛇不记龄期，蜕皮次数随记录自动增加', () => {
+    const snake = pet({ species: 'snake', initialMolts: 5 })
+    const r = newMoltRecord(snake, [], 'm3', NOW)
+    expect(r.instar).toBeUndefined()
+    expect(petStatus(snake, [r], NOW).g.totalMolts).toBe(6)
   })
 })
