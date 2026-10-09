@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { validateBackup } from './db'
-import { addDays, dayDiff, fmtDue, moltHistory, petStatus, recentFoods } from './logic'
+import { addDays, dayDiff, firstMeal, fmtDue, localDate, moltHistory, petStatus, recentFoods } from './logic'
 import type { LogRecord, Pet } from './types'
 
 // 固定“现在”：2026-10-09 10:00（本地时间）
@@ -189,5 +189,49 @@ describe('其他', () => {
   })
   it('备份格式错误时报错', () => {
     expect(() => validateBackup({ foo: 1 })).toThrow()
+  })
+})
+
+describe('复查发现的问题（回归测试）', () => {
+  it('A：成年螳螂连续拒食不提示蜕皮前期，也没有标记按钮', () => {
+    const s = petStatus(pet({ species: 'mantis', initialMolts: 7 }), [feed(10), feed(6, 'refused'), feed(2, 'refused')], NOW)
+    const a = s.alerts.find(x => x.code === 'refuse')!
+    expect(a.text).not.toContain('蜕皮前期')
+    expect(a.action).toBeUndefined()
+  })
+  it('B：localDate 使用本地日期', () => {
+    expect(localDate(new Date(2026, 9, 9, 7, 0).getTime())).toBe('2026-10-09')
+    expect(localDate(new Date(2026, 0, 2, 0, 5).getTime())).toBe('2026-01-02')
+  })
+  it('C：入手日期无效时退回建档时间，不产生 NaN', () => {
+    const s = petStatus(pet({ acquiredAt: '', createdAt: at(30) }), [], NOW)
+    expect(Number.isNaN(s.dueIn)).toBe(false)
+    expect(s.due).toBe(true)
+  })
+  it('D：入手前的喂食记录不结束适应期', () => {
+    const s = petStatus(pet({ species: 'snake', acquiredAt: date(2) }), [feed(10)], NOW)
+    expect(s.pause?.kind).toBe('acclim')
+  })
+  it('E：适应期内拒食不结束适应期，也不提示蜕皮前期', () => {
+    const s = petStatus(pet({ species: 'snake', acquiredAt: date(4) }), [feed(3, 'refused'), feed(1, 'refused')], NOW)
+    expect(s.pause?.kind).toBe('acclim')
+    expect(s.due).toBe(false)
+    expect(s.alerts.map(a => a.code)).not.toContain('refuse')
+  })
+  it('E：适应期结束后按最后一次尝试计算下次喂食', () => {
+    const s = petStatus(pet({ species: 'snake', acquiredAt: date(10) }), [feed(3, 'refused')], NOW)
+    expect(s.pause).toBeUndefined()
+    expect(s.dueIn).toBe(11) // 阶段未知按成体 14 天：3 天前尝试 + 14 天
+  })
+  it('F：蛇吃下后吐出算开过食，不提示未开食', () => {
+    const p = pet({ species: 'snake', acquiredAt: date(20) })
+    const rs = [feed(15, 'regurgitated'), feed(5, 'refused')]
+    expect(petStatus(p, rs, NOW).alerts.map(a => a.code)).not.toContain('not-started')
+    expect(firstMeal(p, rs)?.day).toBe(6)
+  })
+  it('L：addDays 总是返回当天 0 点', () => {
+    const t = addDays(NOW, 3)
+    expect(new Date(t).getHours()).toBe(0)
+    expect(dayDiff(NOW, t)).toBe(3)
   })
 })

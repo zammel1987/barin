@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ToastMsg } from './App'
 import { confirmFeed } from './actions'
 import { deleteRecord, putRecord, uid } from './db'
@@ -10,15 +10,22 @@ export default function QuickLog({ pet, records, type, reload, toast }: {
   pet: Pet; records: LogRecord[]; type: 'feed' | 'poop'; reload: () => Promise<void>; toast: (t: ToastMsg) => void
 }) {
   const [done, setDone] = useState(false)
+  const busy = useRef(false) // 防止连点重复记录
   const last = type === 'feed' ? recentFoods(pet.id, records, 1)[0] : undefined
   async function log() {
+    if (busy.current) return
     if (type === 'feed' && !confirmFeed(pet, records)) return
+    busy.current = true
     const r: LogRecord = {
       id: uid(), petId: pet.id, type, at: Date.now(), note: '',
       ...(type === 'feed' ? { feedResult: 'eaten' as const, food: last?.food, quantity: last?.quantity ?? 1 } : { poopNormal: true }),
     }
-    await putRecord(r)
-    await reload()
+    try {
+      await putRecord(r)
+      await reload()
+    } finally {
+      busy.current = false
+    }
     setDone(true)
     setTimeout(() => setDone(false), 1200)
     toast({ text: `已记录${type === 'feed' ? '喂食' : '排便'}`, undo: async () => { await deleteRecord(r.id); await reload() } })

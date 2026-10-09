@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ToastMsg } from './App'
 import { confirmFeed } from './actions'
-import { deleteRecord, putPet, putRecord, uid } from './db'
+import { deleteRecord, getPet, putPet, putRecord, putRecordAndPet, uid } from './db'
 import { addDays, dayDiff, petGrowth, recentFoods, startOfDay, toLocalInput } from './logic'
 import { compressImage } from './photo'
 import NumInput from './NumInput'
@@ -41,21 +41,21 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload, t
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (!rec && type === 'feed' && !confirmFeed(pet, records)) return
-    let saved = r
-    // 记录蜕皮时结束手动标记的蜕皮前期，并记下前期天数
-    const endsPremolt = !rec && type === 'molt' && pet.premoltSince != null
-    if (endsPremolt) {
-      saved = { ...r, premoltDays: Math.max(0, dayDiff(pet.premoltSince!, r.at)) }
-      await putPet({ ...pet, premoltSince: undefined })
-    }
-    await putRecord(saved)
+    // 记录蜕皮时结束手动标记的蜕皮前期，并记下前期天数；记录和宠物在同一事务中写入
+    const premoltSince = pet.premoltSince
+    const endsPremolt = !rec && type === 'molt' && premoltSince != null
+    const saved = endsPremolt ? { ...r, premoltDays: Math.max(0, dayDiff(premoltSince, r.at)) } : r
+    if (endsPremolt) await putRecordAndPet(saved, { ...pet, premoltSince: undefined })
+    else await putRecord(saved)
     await reload()
     onClose()
     if (!rec) toast({
       text: `已记录${RECORD_TYPES[type].label}`,
       undo: async () => {
         await deleteRecord(saved.id)
-        if (endsPremolt) await putPet(pet)
+        // 只恢复蜕皮前期这一项，读取最新的宠物资料，避免覆盖期间的其他修改
+        const cur = endsPremolt ? await getPet(pet.id) : undefined
+        if (cur) await putPet({ ...cur, premoltSince })
         await reload()
       },
     })

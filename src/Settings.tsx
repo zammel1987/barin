@@ -5,7 +5,8 @@ import { importBackup, validateBackup } from './db'
 import { fmtTime } from './logic'
 import { RECORD_TYPES, type LogRecord, type Pet, type RecordType } from './types'
 
-interface Preview { pets: Pet[]; records: LogRecord[]; skipped: number; photos: number; overlap: number; range: [number, number] | null }
+// records 用于合并（可挂到本地已有宠物上）；replaceRecords 用于覆盖（只保留备份中宠物的记录）
+interface Preview { pets: Pet[]; records: LogRecord[]; replaceRecords: LogRecord[]; skipped: number; photos: number; overlap: number; range: [number, number] | null }
 
 const countByType = (rs: LogRecord[]) =>
   (Object.keys(RECORD_TYPES) as RecordType[]).map(t => [RECORD_TYPES[t].label, rs.filter(r => r.type === t).length] as const).filter(([, n]) => n).map(([l, n]) => `${l} ${n}`).join('、')
@@ -44,8 +45,10 @@ export default function Settings({ pets, records, reload }: Ctx) {
       const v = validateBackup(JSON.parse(await f.text()), pets.map(p => p.id))
       const ids = new Set([...pets.map(p => p.id), ...records.map(r => r.id)])
       const times = v.records.map(r => r.at)
+      const backupPetIds = new Set(v.pets.map(p => p.id))
       setPreview({
         ...v,
+        replaceRecords: v.records.filter(r => backupPetIds.has(r.petId)),
         photos: v.records.filter(r => r.photo).length,
         overlap: [...v.pets, ...v.records].filter(x => ids.has(x.id)).length,
         range: times.length ? [Math.min(...times), Math.max(...times)] : null,
@@ -61,9 +64,11 @@ export default function Settings({ pets, records, reload }: Ctx) {
     // 覆盖前先自动下载一份当前数据，防止误操作
     if (replace && (pets.length || records.length)) downloadBackup(pets, records, '导入前快照')
     try {
-      await importBackup(preview, replace)
+      const recs = replace ? preview.replaceRecords : preview.records
+      await importBackup({ pets: preview.pets, records: recs }, replace)
       await reload()
-      setMsg(`导入成功：${preview.pets.length} 只宠物，${preview.records.length} 条记录（${countByType(preview.records) || '无'}）` + (preview.skipped ? `；跳过无法识别的 ${preview.skipped} 项` : ''))
+      const skipped = preview.skipped + preview.records.length - recs.length
+      setMsg(`导入成功：${preview.pets.length} 只宠物，${recs.length} 条记录（${countByType(recs) || '无'}）` + (skipped ? `；跳过无法识别的 ${skipped} 项` : ''))
     } catch (err) {
       setMsg(`导入失败：${(err as Error).message}`)
     }

@@ -1,4 +1,5 @@
 import { openDB, type DBSchema } from 'idb'
+import { localDate } from './logic'
 import { RECORD_TYPES, SPECIES, type LogRecord, type Pet } from './types'
 
 interface Schema extends DBSchema {
@@ -23,6 +24,7 @@ export async function getAll() {
   return { pets, records }
 }
 export const putPet = async (p: Pet) => (await open()).put('pets', p)
+export const getPet = async (id: string) => (await open()).get('pets', id)
 export const putRecord = async (r: LogRecord) => (await open()).put('records', r)
 export const deleteRecord = async (id: string) => (await open()).delete('records', id)
 
@@ -34,6 +36,12 @@ export async function putRecords(rs: LogRecord[]) {
 export async function deleteRecords(ids: string[]) {
   const tx = (await open()).transaction('records', 'readwrite')
   await Promise.all([...ids.map(id => tx.store.delete(id)), tx.done])
+}
+
+// 在同一事务中写入记录和宠物（例如记录蜕皮同时结束蜕皮前期）
+export async function putRecordAndPet(r: LogRecord, p: Pet) {
+  const tx = (await open()).transaction(['records', 'pets'], 'readwrite')
+  await Promise.all([tx.objectStore('records').put(r), tx.objectStore('pets').put(p), tx.done])
 }
 
 export async function deletePet(id: string) {
@@ -53,13 +61,13 @@ export const makeBackup = (pets: Pet[], records: LogRecord[]): Backup => ({ vers
 export function validateBackup(raw: unknown, existingPetIds: string[] = []) {
   const b = raw as Partial<Backup> | null
   if (!b || !Array.isArray(b.pets) || !Array.isArray(b.records)) throw new Error('备份文件格式不正确')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDate()
   const pets: Pet[] = b.pets
-    .filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && p.species in SPECIES)
+    .filter(p => p && typeof p.id === 'string' && typeof p.name === 'string' && Object.hasOwn(SPECIES, p.species))
     .map(p => ({ ...p, breed: p.breed ?? '', sex: p.sex ?? 'unknown', notes: p.notes ?? '', createdAt: p.createdAt ?? Date.now(), acquiredAt: typeof p.acquiredAt === 'string' && p.acquiredAt ? p.acquiredAt : today }))
   const petIds = new Set([...pets.map(p => p.id), ...existingPetIds])
   const records: LogRecord[] = b.records
-    .filter(r => r && typeof r.id === 'string' && typeof r.petId === 'string' && petIds.has(r.petId) && r.type in RECORD_TYPES && typeof r.at === 'number' && Number.isFinite(r.at))
+    .filter(r => r && typeof r.id === 'string' && typeof r.petId === 'string' && petIds.has(r.petId) && Object.hasOwn(RECORD_TYPES, r.type) && typeof r.at === 'number' && Number.isFinite(r.at))
     .map(r => ({ ...r, note: r.note ?? '' }))
   return { pets, records, skipped: b.pets.length - pets.length + b.records.length - records.length }
 }

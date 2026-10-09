@@ -1,5 +1,5 @@
 import { makeBackup } from './db'
-import { DAY } from './logic'
+import { DAY, localDate } from './logic'
 import type { LogRecord, Pet } from './types'
 
 // localStorage 可能不可用（隐私模式等），读写都要兜底
@@ -13,9 +13,10 @@ export function downloadBackup(pets: Pet[], records: LogRecord[], prefix = '爬�
   const url = URL.createObjectURL(new Blob([JSON.stringify(makeBackup(pets, records), null, 2)], { type: 'application/json' }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `${prefix}-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = `${prefix}-${localDate()}.json`
   a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // 留足时间给浏览器的下载确认（iOS 会先弹窗）
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export function exportBackup(pets: Pet[], records: LogRecord[]) {

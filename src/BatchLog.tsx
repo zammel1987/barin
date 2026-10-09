@@ -23,13 +23,16 @@ function groupOf(s: PetStatus): Group {
 export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
   const items = pets.filter(p => !p.archivedAt).map(p => ({ p, s: petStatus(p, records) }))
   const [mode, setMode] = useState<Mode>('feed')
-  const [rows, setRows] = useState<Record<string, Row>>(() => Object.fromEntries(items.map(({ p, s }) => {
+  const defaultRow = (p: Pet, s: PetStatus): Row => {
     const last = recentFoods(p.id, records, 1)[0]
     const g = groupOf(s)
-    return [p.id, { checked: g === 'overdue' || g === 'today', food: last?.food ?? SPECIES[p.species].foods[0], quantity: last?.quantity ?? 1, result: 'eaten' }]
-  })))
+    return { checked: g === 'overdue' || g === 'today', food: last?.food ?? SPECIES[p.species].foods[0], quantity: last?.quantity ?? 1, result: 'eaten' }
+  }
+  const [stored, setRows] = useState<Record<string, Row>>(() => Object.fromEntries(items.map(({ p, s }) => [p.id, defaultRow(p, s)])))
+  // 打开后新出现的宠物（例如撤销了归档）用默认行，避免读到 undefined
+  const rows: Record<string, Row> = { ...Object.fromEntries(items.map(({ p, s }) => [p.id, { ...defaultRow(p, s), checked: false }])), ...stored }
   const [saving, setSaving] = useState(false)
-  const update = (id: string, patch: Partial<Row>) => setRows(o => ({ ...o, [id]: { ...o[id], ...patch } }))
+  const update = (id: string, patch: Partial<Row>) => setRows(o => ({ ...o, [id]: { ...rows[id], ...o[id], ...patch } }))
   const grouped = (Object.keys(GROUPS) as Group[])
     .map(g => ({ g, list: items.filter(x => groupOf(x.s) === g) }))
     .filter(x => x.list.length)
@@ -37,7 +40,7 @@ export default function BatchLog({ pets, records, reload, go, toast }: Ctx) {
 
   function toggleGroup(list: { p: Pet }[]) {
     const all = list.every(({ p }) => rows[p.id].checked)
-    setRows(o => ({ ...o, ...Object.fromEntries(list.map(({ p }) => [p.id, { ...o[p.id], checked: !all }])) }))
+    setRows(o => ({ ...o, ...Object.fromEntries(list.map(({ p }) => [p.id, { ...rows[p.id], ...o[p.id], checked: !all }])) }))
   }
 
   async function save() {

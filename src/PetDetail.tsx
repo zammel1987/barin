@@ -49,8 +49,8 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
   const types = (Object.keys(RECORD_TYPES) as RecordType[]).filter(t => pet.species === 'snake' || t !== 'weight' || weights.length)
   const meal = firstMeal(pet, records)
   const archived = !!pet.archivedAt
-  // 成年螳螂不再蜕皮，不提供蜕皮前期开关
-  const canPremolt = !archived && !(pet.species === 'mantis' && g.stage === 'adult')
+  // 成年螳螂不再蜕皮，不提供标记；但已处于蜕皮前期时始终可以结束
+  const canPremolt = !archived && (pet.premoltSince != null || !(pet.species === 'mantis' && g.stage === 'adult'))
   const gaps = s.history.map(h => h.gapDays).filter((x): x is number => x != null)
   const avgGap = gaps.length ? Math.round(gaps.slice(-3).reduce((a, b) => a + b, 0) / Math.min(3, gaps.length)) : null
 

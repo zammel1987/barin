@@ -6,9 +6,13 @@ const HOUR = 3600000
 export const startOfDay = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() }
 // 按本地自然日计算天数差：昨晚 8 点到今早算 1 天
 export const dayDiff = (from: number, to: number) => Math.round((startOfDay(to) - startOfDay(from)) / DAY)
-export const addDays = (t: number, n: number) => { const d = new Date(startOfDay(t)); d.setDate(d.getDate() + n); return d.getTime() }
+export const addDays = (t: number, n: number) => { const d = new Date(startOfDay(t)); d.setDate(d.getDate() + n); d.setHours(0, 0, 0, 0); return d.getTime() }
 export const daysSince = (t: number | undefined, now = Date.now()) => (t == null ? null : dayDiff(t, now))
 export const parseDate = (d: string) => new Date(d + 'T00:00:00').getTime()
+// 本地日期字符串 YYYY-MM-DD（不用 toISOString，避免 UTC+8 早上 8 点前变成昨天）
+export const localDate = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+// 入手日期；缺失或无效时退回建档时间
+export const acquiredOf = (pet: Pet) => { const t = parseDate(pet.acquiredAt); return Number.isNaN(t) ? startOfDay(pet.createdAt) : t }
 
 export function fmtDays(d: number | null) {
   if (d == null) return '无记录'
@@ -51,7 +55,7 @@ export function petGrowth(pet: Pet, records: LogRecord[], now = Date.now()) {
   const sp = SPECIES[pet.species]
   const arthropod = pet.species !== 'snake'
   const molts = records.filter(r => r.petId === pet.id && r.type === 'molt').sort((a, b) => a.at - b.at)
-  const acquired = parseDate(pet.acquiredAt)
+  const acquired = acquiredOf(pet)
   const moltsSince = molts.filter(r => r.at >= acquired).length
   const totalMolts = (pet.initialMolts ?? 0) + moltsSince
   // 最近一次蜕皮记录手动填了龄期则以它为准
@@ -170,7 +174,8 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
   const history = moltHistory(pet, rs)
   const forecast = moltForecast(pet, history, g.stage, now)
   const today = startOfDay(now)
-  const acquired = parseDate(pet.acquiredAt)
+  const acquired = acquiredOf(pet)
+  const canMolt = !(pet.species === 'mantis' && g.stage === 'adult')
   const base = {
     rs, g, interval, history, forecast, lastFeed, lastEaten, lastPoop, lastMolt,
     feedDays: daysSince(lastFeed?.at, now), poopDays: daysSince(lastPoop?.at, now),
@@ -190,9 +195,10 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
     if (!feeds.some(f => f.at > t && isEaten(f))) regurgEnd = addDays(t, repeat ? 21 : 14)
   }
   const acclimDays = acclimDaysFor(pet)
-  const acclimEnd = !lastFeed ? addDays(acquired, acclimDays) : null
+  // 到家后还没成功进食才算适应期（入手前的记录和拒食都不结束适应期）
+  const acclimEnd = feeds.some(f => f.at >= acquired && isEaten(f)) ? null : addDays(acquired, acclimDays)
   const start = lastFeed ? addDays(lastFeed.at, interval.days) : acclimEnd!
-  let nextDue: number | null = Math.max(start, hardenEnd ?? 0, regurgEnd ?? 0)
+  let nextDue: number | null = Math.max(start, acclimEnd ?? 0, hardenEnd ?? 0, regurgEnd ?? 0)
 
   const premoltName = sp.premoltName
   let pause: Pause | undefined
@@ -228,7 +234,10 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
   }
   if (streak.length >= 2 && !pause) {
     const restDays = hardenDays + (pet.species === 'mantis' ? 4 : 21)
-    if (arthropod && lastMolt && dayDiff(lastMolt.at, now) <= restDays) {
+    if (!canMolt) {
+      // 成年螳螂不再蜕皮，拒食与蜕皮前期无关
+      alerts.push({ code: 'refuse', level: 'warn', text: `连续拒食 ${streak.length} 次：成虫拒食可能与抱卵、衰老或环境有关，及时取出活饵` })
+    } else if (arthropod && lastMolt && dayDiff(lastMolt.at, now) <= restDays) {
       alerts.push({ code: 'postmolt-refuse', level: 'info', text: `连续拒食 ${streak.length} 次：蜕皮后休整期拒食较常见，及时取出活饵` })
     } else {
       alerts.push({
@@ -261,7 +270,7 @@ export function petStatus(pet: Pet, records: LogRecord[], now = Date.now()) {
     }
     const recentRegurg = regurgs.filter(r => dayDiff(r.regurgAt ?? r.at, now) <= 60)
     if (recentRegurg.length >= 2) alerts.push({ code: 'regurg-repeat', level: 'danger', text: `60 天内吐食 ${recentRegurg.length} 次，建议咨询爬宠兽医` })
-    if (!feeds.some(isEaten) && feeds.some(r => r.feedResult === 'refused') && g.keptDays >= 14) {
+    if (!feeds.some(r => r.feedResult !== 'refused') && feeds.some(r => r.feedResult === 'refused') && g.keptDays >= 14) {
       alerts.push({ code: 'not-started', level: 'warn', text: `到家 ${g.keptDays} 天仍未开食，建议咨询有经验的饲主或兽医` })
     }
     // 进食后长时间未排便
@@ -296,9 +305,9 @@ export function recentFoods(petId: string, records: LogRecord[], n = 3) {
   return out
 }
 
-// 首次进食（开食）：入手后的第一条已吃记录
+// 首次进食（开食）：入手后第一条吃下的记录（吃下后吐出也算开食）
 export function firstMeal(pet: Pet, records: LogRecord[]) {
-  const acquired = parseDate(pet.acquiredAt)
-  const first = records.filter(r => r.petId === pet.id && isEaten(r) && r.at >= acquired).sort((a, b) => a.at - b.at)[0]
+  const acquired = acquiredOf(pet)
+  const first = records.filter(r => r.petId === pet.id && r.type === 'feed' && r.feedResult !== 'refused' && r.at >= acquired).sort((a, b) => a.at - b.at)[0]
   return first ? { at: first.at, day: dayDiff(acquired, first.at) + 1 } : null
 }
