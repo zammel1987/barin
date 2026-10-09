@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
 import { deleteRecord } from './db'
-import { fmtDays, fmtTime, petStatus } from './logic'
-import { FEED_RESULTS, RECORD_TYPES, SPECIES, type LogRecord, type Pet, type RecordType } from './types'
+import { fmtAge, fmtDays, fmtTime, petGrowth, petStatus } from './logic'
+import { FEED_RESULTS, RECORD_TYPES, SPECIES, STAGES, type LogRecord, type Pet, type RecordType } from './types'
 import RecordForm from './RecordForm'
 import QuickLog from './QuickLog'
 import WeightChart from './WeightChart'
@@ -17,8 +17,26 @@ export function describe(r: LogRecord) {
   }
 }
 
+export function RecordItem({ r, title, onOpen, onDelete }: { r: LogRecord; title?: string; onOpen: () => void; onDelete?: () => void }) {
+  const [zoom, setZoom] = useState(false)
+  return (
+    <li onClick={onOpen}>
+      <span className="t-icon">{RECORD_TYPES[r.type].emoji}</span>
+      <div className="grow">
+        <div>{title && <b>{title} · </b>}<b>{RECORD_TYPES[r.type].label}</b> <span className={r.feedResult === 'refused' || r.poopNormal === false || r.moltComplete === false ? 'warn' : ''}>{describe(r)}</span></div>
+        <div className="muted small">{fmtTime(r.at)}</div>
+        {r.note && <div className="pre">{r.note}</div>}
+        {r.photo && <img className="thumb" src={r.photo} alt="记录照片" onClick={e => { e.stopPropagation(); setZoom(true) }} />}
+      </div>
+      {onDelete && <button className="icon sm" onClick={e => { e.stopPropagation(); onDelete() }} aria-label="删除">✕</button>}
+      {zoom && <div className="lightbox" onClick={e => { e.stopPropagation(); setZoom(false) }}><img src={r.photo} alt="记录照片" /></div>}
+    </li>
+  )
+}
+
 export default function PetDetail({ pet, records, reload, go }: Ctx & { pet: Pet }) {
   const s = petStatus(pet, records)
+  const g = petGrowth(pet, records)
   const [editing, setEditing] = useState<{ type: RecordType; rec?: LogRecord } | null>(null)
   const [filter, setFilter] = useState<RecordType | 'all'>('all')
   const shown = s.rs.filter(r => filter === 'all' || r.type === filter)
@@ -43,6 +61,9 @@ export default function PetDetail({ pet, records, reload, go }: Ctx & { pet: Pet
           <button className="ghost" onClick={() => go({ name: 'petForm', id: pet.id })}>编辑</button>
         </div>
         <div className="kv">
+          <div><span>年龄{g.estimated ? '（估算）' : ''}</span><b>{g.ageDays != null ? fmtAge(g.ageDays) : `已养 ${fmtAge(g.keptDays)}`}</b></div>
+          {g.instar != null && <div><span>龄期</span><b>L{g.instar}</b></div>}
+          {g.stage && <div><span>阶段</span><b><span className={`stage ${g.stage}`}>{STAGES[g.stage]}</span></b></div>}
           <div><span>上次喂食</span><b className={s.due ? 'warn' : ''}>{fmtDays(s.feedDays)}</b></div>
           <div><span>上次排便</span><b>{fmtDays(s.poopDays)}</b></div>
           <div><span>上次蜕皮</span><b>{s.lastMolt ? fmtDays(Math.floor((Date.now() - s.lastMolt.at) / 864e5)) : '无记录'}</b></div>
@@ -72,20 +93,12 @@ export default function PetDetail({ pet, records, reload, go }: Ctx & { pet: Pet
         {shown.length === 0 && <p className="empty">暂无记录</p>}
         <ul className="timeline">
           {shown.map(r => (
-            <li key={r.id} onClick={() => setEditing({ type: r.type, rec: r })}>
-              <span className="t-icon">{RECORD_TYPES[r.type].emoji}</span>
-              <div className="grow">
-                <div><b>{RECORD_TYPES[r.type].label}</b> <span className={r.feedResult === 'refused' || r.poopNormal === false || r.moltComplete === false ? 'warn' : ''}>{describe(r)}</span></div>
-                <div className="muted small">{fmtTime(r.at)}</div>
-                {r.note && <div className="pre">{r.note}</div>}
-              </div>
-              <button className="icon sm" onClick={e => { e.stopPropagation(); del(r) }} aria-label="删除">✕</button>
-            </li>
+            <RecordItem key={r.id} r={r} onOpen={() => setEditing({ type: r.type, rec: r })} onDelete={() => del(r)} />
           ))}
         </ul>
       </section>
 
-      {editing && <RecordForm pet={pet} type={editing.type} rec={editing.rec} onClose={() => setEditing(null)} reload={reload} />}
+      {editing && <RecordForm pet={pet} records={records} type={editing.type} rec={editing.rec} onClose={() => setEditing(null)} reload={reload} />}
     </>
   )
 }
