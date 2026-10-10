@@ -1,6 +1,6 @@
 # 爬宠饲养记录
 
-一个用于记录螳螂、蜘蛛、蛇饲养情况的 PWA 应用。数据保存在本地，可以离线使用。
+一个用于记录螳螂、蜘蛛、蛇饲养情况的 PWA 应用。数据保存在本地，可以离线使用；也可以自己架一个很小的同步服务，让手机、电脑共用一份数据。
 
 ## 功能
 - 宠物管理：种类、品种、性别、入手日期；按幼体 / 亚成 / 成体分别设置喂食间隔（有物种默认值）
@@ -21,6 +21,7 @@
 - **归档**：死亡或转让的宠物可归档，保留全部记录，不再提醒，可恢复
 - **导出 Excel / CSV**：宠物和全部记录两张表，也可单独导出一只宠物的记录（方便转让时交给买家）
 - 数据安全：申请持久化存储；超过 14 天未备份时提醒；导入前预览，覆盖前自动下载当前数据快照
+- **多设备同步（可选）**：在「设置」里填同步口令后，记录自动保存到自己的服务器，多台设备看到同一份数据；离线时照常记录，联网后自动补传。每只宠物、每条记录各自比较修改时间，后改的为准
 
 功能来源于对各大论坛饲主常见问题的调研，见 [docs/keeper-problems.md](docs/keeper-problems.md)。
 
@@ -28,6 +29,29 @@
 ```bash
 npm install
 npm run dev     # 开发
-npm test        # 单元测试（喂食到期、提醒、蜕皮预测等规则）
+npm test        # 单元测试（喂食到期、提醒、蜕皮预测、同步合并等规则）
 npm run build   # 构建到 dist/，可部署到任意静态托管（GitHub Pages、Vercel 等）
+```
+
+## 同步服务器（可选）
+不部署也能用，数据只在本机浏览器里。部署后多台设备共用一份数据：一个同步口令，没有账号。
+
+`server/barin_sync.py` 只用 Python 3 标准库和 SQLite，不需要安装依赖。应用访问的是**同一网址下的 `api/`**，所以网页和同步服务要放在同一个域名（或 IP 和端口）后面，并且要用 HTTPS。
+
+1. 把 `server/barin_sync.py` 放到服务器的 `/opt/barin-sync/`，把 `server/barin-sync.service` 放到 `/etc/systemd/system/`，然后 `systemctl enable --now barin-sync`。服务只监听本机的 8787 端口。
+2. 在托管网页的 nginx 站点里加一段转发：
+   ```nginx
+   location /api/ {
+       proxy_pass http://127.0.0.1:8787;
+       client_max_body_size 8m;
+       add_header Cache-Control "no-store" always;
+   }
+   ```
+3. 首次启动会生成同步口令，在服务器上查看：`sudo cat /var/lib/barin-sync/token`。在每台设备的「设置 → 服务器同步」里填一次。想换口令就改这个文件（至少 12 个字母或数字）再重启服务，各设备重新填。
+
+数据在 `/var/lib/barin-sync/barin.db`；每天第一次有改动写入前会自动复制一份到 `backups/`，保留 14 份。从备份恢复：停服务，用备份文件替换 `barin.db`，执行 `BARIN_DATA=/var/lib/barin-sync python3 /opt/barin-sync/barin_sync.py new-epoch`，再启动服务——各设备下次同步时会把自己手里更新的内容补传上来。服务器重装、数据库丢失时也一样：新库是空的，任何一台开着同步的设备打开后都会把数据传回去。
+
+```bash
+python -m unittest discover -s server   # 同步服务的测试
+python server/barin_sync.py             # 本地运行（用 BARIN_DATA 指定数据目录）；npm run dev 会把 /api 转给它
 ```

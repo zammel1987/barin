@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// 本地开发/预览时把同步请求转给本机运行的 server/barin_sync.py
+const proxy = { '/api': 'http://127.0.0.1:8787' }
+
 export default defineConfig({
   base: './',
+  server: { proxy },
+  preview: { proxy },
   plugins: [
     react(),
     VitePWA({

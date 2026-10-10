@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAll } from './db'
+import { getAll, onUpgradeBlocked } from './db'
+import { startSync } from './sync'
 import type { LogRecord, Pet } from './types'
 import Home from './Home'
 import PetDetail from './PetDetail'
@@ -28,6 +29,16 @@ export default function App() {
     setLoaded(true)
   }, [])
   useEffect(() => { reload() }, [reload])
+  // 应用更新后要升级本地数据库，另一个窗口还开着旧版本时会被挡住，直到它关闭。
+  // 浏览器不一定会通知“被挡住”，所以加载太久时也给出同样的建议
+  const [stuck, setStuck] = useState<'' | 'blocked' | 'slow'>('')
+  useEffect(() => {
+    onUpgradeBlocked(() => setStuck('blocked'))
+    const t = setTimeout(() => setStuck(s => s || 'slow'), 4000)
+    return () => { onUpgradeBlocked(); clearTimeout(t) }
+  }, [])
+  // 多设备同步：其他设备的改动合并进来后刷新界面
+  useEffect(() => startSync(reload), [reload])
 
   // 底部提示，5 秒后消失，可撤销
   const toast = useCallback((t: ToastMsg) => {
@@ -56,7 +67,8 @@ export default function App() {
         </>}
       </header>
       <main>
-        {!loaded ? <p className="empty">加载中…</p>
+        {!loaded ? <p className="empty">{stuck === 'blocked' ? '应用已更新。请关闭其他打开着本应用的标签页或窗口，这里会自动继续。'
+          : stuck === 'slow' ? '加载比平时久。如果别的标签页或窗口也开着本应用，请先把它们关掉，这里会自动继续。' : '加载中…'}</p>
           : view.name === 'home' ? <Home {...ctx} />
           : view.name === 'pet' ? (pet ? <PetDetail {...ctx} pet={pet} /> : <p className="empty">宠物不存在</p>)
           : view.name === 'petForm' ? <PetForm {...ctx} pet={pets.find(p => p.id === view.id)} />

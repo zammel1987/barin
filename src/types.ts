@@ -27,6 +27,7 @@ export interface Pet {
   archivedAt?: string // 归档日期（死亡/转让），归档后不再提醒
   archiveReason?: ArchiveReason
   archiveNote?: string
+  updatedAt?: number // 最后修改时间，每次保存时自动写入；多设备同步时新的覆盖旧的
 }
 
 export type ArchiveReason = 'dead' | 'rehomed' | 'other'
@@ -53,6 +54,7 @@ export interface LogRecord {
   preyRemovedAt?: number // 剩饵取出时间
   regurgAt?: number // 吐食时间（蛇），未填按喂食时间
   premoltDays?: number // 本次蜕皮前期天数（由手动标记的蜕皮前期算出）
+  updatedAt?: number // 最后修改时间，同 Pet.updatedAt
 }
 
 // moltDays: 平均蜕皮间隔（估算年龄、无历史时的蜕皮参考）；adultInstar: 默认成体龄期（L1 为孵化时）

@@ -1,0 +1,24 @@
+# 爬宠饲养记录的同步服务。放到 /etc/systemd/system/，程序放在 /opt/barin-sync/barin_sync.py。
+# 数据（数据库、每日备份、同步口令）在 /var/lib/barin-sync，只有本服务和 root 能读。
+[Unit]
+Description=barin sync server (reptile keeping log)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/barin-sync/barin_sync.py
+Environment=BARIN_DATA=/var/lib/barin-sync BARIN_HOST=127.0.0.1 BARIN_PORT=8787 PYTHONUNBUFFERED=1
+# 不用 root 运行：systemd 临时分配一个无权限用户，只能写自己的数据目录
+DynamicUser=yes
+StateDirectory=barin-sync
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+MemoryMax=300M
+
+[Install]
+WantedBy=multi-user.target

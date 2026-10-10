@@ -4,6 +4,7 @@ import Alerts from './Alerts'
 import PremoltActions from './PremoltActions'
 import { backupReminder, dismissBackupReminder, exportBackup } from './backup'
 import { fmtAge, fmtDays, fmtDue, petStatus, type PetStatus } from './logic'
+import { syncedRecently, useSyncState } from './sync'
 import { SPECIES, STAGES, type Pet, type Species } from './types'
 
 type Sort = 'todo' | 'molt' | 'name'
@@ -29,10 +30,17 @@ export default function Home({ pets, records, reload, go, toast }: Ctx) {
   const live = all.filter(x => !x.p.archivedAt)
   const overdue = live.filter(x => x.s.due && x.s.dueIn! < 0).length
   const today = live.filter(x => x.s.due && x.s.dueIn === 0).length
-  const reminder = backupReminder(pets, records, now)
+  const sync = useSyncState()
+  const reminder = syncedRecently(now) ? null : backupReminder(pets, records, now)
 
   return (
     <>
+      {sync.enabled && sync.error && !sync.offline && (
+        <div className="banner">
+          <span className="grow">☁️ 同步失败：{sync.error}</span>
+          <button onClick={() => go({ name: 'settings' })}>查看</button>
+        </div>
+      )}
       {reminder && (
         <div className="banner">
           <span className="grow">💾 {reminder.never ? '还没有备份过数据' : `已 ${reminder.days} 天未备份（新增 ${reminder.fresh} 条）`}</span>

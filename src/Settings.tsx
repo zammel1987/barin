@@ -4,6 +4,8 @@ import { downloadBackup, exportBackup, getLastBackup } from './backup'
 import { importBackup, validateBackup } from './db'
 import { withExport } from './loadExport'
 import { fmtTime } from './logic'
+import { useSyncState } from './sync'
+import SyncPanel from './SyncPanel'
 import { RECORD_TYPES, type LogRecord, type Pet, type RecordType } from './types'
 
 // records 用于合并（可挂到本地已有宠物上）；replaceRecords 用于覆盖（只保留备份中宠物的记录）
@@ -18,6 +20,7 @@ export default function Settings({ pets, records, reload }: Ctx) {
   const [preview, setPreview] = useState<Preview | null>(null)
   const [storage, setStorage] = useState<{ persisted: boolean | null; usage?: number; quota?: number }>({ persisted: null })
   const [lastBackup, setLastBackup] = useState(getLastBackup())
+  const sync = useSyncState()
 
   useEffect(() => {
     (async () => {
@@ -62,6 +65,7 @@ export default function Settings({ pets, records, reload }: Ctx) {
 
   async function doImport(replace: boolean) {
     if (!preview) return
+    if (replace && sync.enabled && !confirm('已开启服务器同步：覆盖会同步到服务器和其他设备，备份里没有的宠物和记录在所有设备上都会被删除。确定覆盖？')) return
     // 覆盖前先自动下载一份当前数据，防止误操作
     if (replace && (pets.length || records.length)) downloadBackup(pets, records, '导入前快照')
     try {
@@ -85,9 +89,12 @@ export default function Settings({ pets, records, reload }: Ctx) {
 
   return (
     <div className="form">
+      <SyncPanel />
       <section className="panel">
         <h3>数据备份</h3>
-        <p className="muted">数据只保存在本设备浏览器中，无账号、无服务器、不限数量。清除浏览器数据或更换手机会导致丢失，请定期导出备份。</p>
+        <p className="muted">{sync.enabled
+          ? '数据保存在本设备浏览器中，并自动同步到服务器；换设备时填同步口令即可取回。导出的备份文件是一份独立的离线副本，建议偶尔导出一次。'
+          : '数据只保存在本设备浏览器中，无账号、无服务器、不限数量。清除浏览器数据或更换手机会导致丢失，请定期导出备份，或开启上面的服务器同步。'}</p>
         <p>当前：{pets.length} 只宠物，{records.length} 条记录（{records.filter(r => r.photo).length} 张照片）</p>
         <p className="muted small">上次导出：{lastBackup ? fmtTime(lastBackup) : '从未导出'}</p>
         <button className="primary" onClick={onExport}>导出 JSON 备份</button>
