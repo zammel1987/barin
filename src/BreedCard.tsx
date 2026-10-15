@@ -10,6 +10,7 @@ export default function BreedCard({ guide, compact = false }: { guide: BreedGuid
       </div>
       <div className="breed-tags">{guide.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
       <p className="breed-summary">{guide.summary}</p>
+      {guide.identification && <p className="breed-caution" role="note">🔎 {guide.identification}</p>}
       <dl className="breed-facts">
         <div><dt>栖居方式</dt><dd>{guide.habitat}</dd></div>
         <div><dt>活动习惯</dt><dd>{guide.activity}</dd></div>

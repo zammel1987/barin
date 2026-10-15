@@ -8,6 +8,7 @@ export interface BreedGuide {
   aliases: string[]
   tags: string[]
   summary: string
+  identification?: string
   origin: string
   habitat: string
   activity: string
@@ -87,10 +88,10 @@ export const BREED_GUIDES: BreedGuide[] = [
     ],
   },
   {
-    id: 'ghost-mantis', species: 'mantis', name: '幽灵螳螂', scientificName: 'Phyllocrania paradoxa',
-    aliases: ['幽灵螳', 'Ghost Mantis'],
+    id: 'ghost-mantis', species: 'mantis', name: '高冠幽灵螳螂', scientificName: 'Phyllocrania paradoxa',
+    aliases: ['高冠幽灵螳', '高冠幽灵', '幽灵螳螂', '幽灵螳', 'Ghost Mantis', '高冠幽灵螳螂（Phyllocrania paradoxa）'],
     tags: ['枯叶拟态', '伏击捕食', '偏好飞虫', '倒挂蜕皮'],
-    summary: '头冠和身体轮廓像干枯叶片，经常保持静止，等待猎物进入捕捉范围。',
+    summary: '高耸、扭曲的头冠和叶片状身体像一片干枯树叶；常在枝条上静止伪装，等待猎物进入捕捉范围。',
     origin: '非洲及马达加斯加', habitat: '枝条、灌丛和叶片之间', activity: '常在枝条或盒顶倒挂，较少主动追逐猎物',
     diet: '幼体果蝇，较大个体可用家蝇、丽蝇等适口飞虫',
     behavior: '擅长伪装和伏击，过大的猎物可能使其退缩；即使同类相食风险较低也应优先单养。',
@@ -100,6 +101,38 @@ export const BREED_GUIDES: BreedGuide[] = [
     sources: [
       { title: 'PanTerra Pets：幽灵螳螂饲养观察', url: 'https://www.panterrapets.com/pages/ghost-mantis-caresheet' },
       { title: 'Royal Veterinary Center：幽灵螳螂资料', url: 'https://royalveterinarycenter.com/en/care-sheets/praying-mantis' },
+    ],
+  },
+  {
+    id: 'budwing-mantis', species: 'mantis', name: '芽翅螳螂（Budwing）', scientificName: 'Parasphendale sp.',
+    aliases: ['芽翅螳螂', '芽翅螳', 'Budwing Mantis', 'Budwing', '芽翅螳螂（Budwing mantis）'],
+    tags: ['雌虫短翅', '主动追猎', '单独饲养', '种级待确认'],
+    summary: '常见饲养种多呈褐色斑驳外观；成年雌虫体形较壮、翅短，雄虫较纤细且有可飞行的长翅。',
+    identification: 'Budwing mantis 是英文俗名，常用于 Parasphendale affinis、P. agrionina 等近似种。当前仅确认到 Parasphendale 属，具体种名需核对卖家的拉丁名标签；这里展示常见饲养种的共通要点。',
+    origin: '东非；具体分布依种而异', habitat: '灌丛、枝条及其他植被', activity: '捕食较主动，会接近或追逐移动的猎物',
+    diet: '幼体用适口果蝇，较大个体可用苍蝇、小蟋蟀、蟑螂等饲料昆虫',
+    behavior: '雌虫常有较强捕食反应，受扰可能展开前足和短翅示威；成年雄虫易受惊飞走。',
+    housing: '单独饲养，提供枝条和活动空间；盒高至少约体长三倍、宽至少约两倍，并保留倒挂蜕皮净空。',
+    care: '保持温暖、通风，以少量喷雾提供饮水珠；按腹部饱满程度调节投喂，避免因追食积极而持续加餐。',
+    caution: '短翅是成年雌虫的常见特征，不等于尚未羽化；避免混养，蜕皮前后及时取出活饵。',
+    sources: [
+      { title: 'Keeping Insects：芽翅螳螂两种近似种及饲养说明', url: 'https://www.keepinginsects.com/praying-mantis/species/budwing-mantis/' },
+      { title: 'Mantid Kingdom：Parasphendale agrionina 饲养观察', url: 'https://mantidkingdom.com/mantid-care/parasphendale-agrionina/' },
+    ],
+  },
+  {
+    id: 'african-twig-mantis', species: 'mantis', name: '非洲树枝螳螂', scientificName: 'Popa spurca',
+    aliases: ['非洲树枝螳', '非洲枝螳螂', 'African Twig Mantis', 'African Twig Mantid', '非洲树枝螳螂（African twig mantis）'],
+    tags: ['树枝拟态', '偏好飞虫', '枝条栖居', '单独饲养'],
+    summary: '细长身体、褐色纹理和伸展姿态像枯树枝，停在枝条间时不容易被发现；成年雄虫通常比雌虫更纤细。',
+    origin: '非洲', habitat: '灌丛和树枝之间', activity: '常借枝条伪装，在栖木附近捕食',
+    diet: '幼体果蝇，随体型增大可改用家蝇、丽蝇等适口飞虫',
+    behavior: '雌虫腹部较壮、翅较短，雄虫较细长且翅较长；仍有同类相食风险，应分盒饲养。',
+    housing: '提供与身体相衬的细枝、可抓附的顶部及下方净空；盒高至少约体长三倍，宽至少约两倍。',
+    care: '保持温暖、通风和干湿变化，少量喷雾形成饮水珠；无需把整个饲养盒长期维持在闷湿状态。',
+    caution: '身体细长是拟态特征，不能仅凭“看起来瘦”持续加餐；先观察腹部和实际进食。“非洲巨型树枝螳”等名称可能指其他种，不能混用资料。',
+    sources: [
+      { title: 'Fatal Mantis：Popa spurca 饲养与行为观察', url: 'https://www.fatalmantis.com/twig-1' },
     ],
   },
   {

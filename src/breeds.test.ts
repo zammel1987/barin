@@ -20,6 +20,26 @@ describe('品种资料匹配与搜索', () => {
     expect(searchBreedGuides('all', 'pantherophis').map(b => b.id)).toEqual(['corn-snake'])
     expect(searchBreedGuides('all', '不存在')).toHaveLength(0)
   })
+  it('新增螳螂支持用户提供的中英文名称，幽灵旧档案仍然匹配', () => {
+    for (const name of ['芽翅螳螂', 'Budwing mantis', '芽翅螳螂（Budwing mantis）']) {
+      expect(findBreedGuide('mantis', name)?.id).toBe('budwing-mantis')
+    }
+    for (const name of ['非洲树枝螳螂', 'African twig mantis', 'Popa spurca']) {
+      expect(findBreedGuide('mantis', name)?.id).toBe('african-twig-mantis')
+    }
+    for (const name of ['高冠幽灵螳螂', '幽灵螳螂', 'Ghost Mantis', 'Phyllocrania paradoxa', '高冠幽灵螳螂Phyllocrania paradoxa']) {
+      expect(findBreedGuide('mantis', name)?.id).toBe('ghost-mantis')
+    }
+  })
+  it('芽翅俗名只确认到属，不把近似种拉丁名当成同一种的别名', () => {
+    const guide = findBreedGuide('mantis', 'Budwing mantis')!
+    expect(guide.scientificName).toBe('Parasphendale sp.')
+    expect(guide.identification).toContain('具体种名需核对')
+    expect(findBreedGuide('mantis', 'Parasphendale affinis')).toBeUndefined()
+    expect(findBreedGuide('mantis', 'Parasphendale agrionina')).toBeUndefined()
+    expect(findBreedGuide('snake', 'African twig mantis')).toBeUndefined()
+    expect(searchBreedGuides('mantis', '种级待确认').map(b => b.id)).toEqual(['budwing-mantis'])
+  })
   it('每份资料名称唯一，且包含行为、照顾要点和可查来源', () => {
     expect(new Set(BREED_GUIDES.map(b => b.id)).size).toBe(BREED_GUIDES.length)
     for (const b of BREED_GUIDES) {
