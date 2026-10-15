@@ -61,4 +61,10 @@ describe('品种资料匹配与搜索', () => {
     expect(searchBreedGuides('mantis', '弑亲菱背螳').map(b => b.id)).toEqual(['rhombodera-fratricida'])
     expect(findBreedGuide('spider', 'Rhombodera fratricida')).toBeUndefined()
   })
+  it('宠物档案中的“弑亲棱背螳螂”及完整中文写法可直接匹配 RF', () => {
+    for (const name of ['弑亲棱背螳螂', '弑亲菱背螳螂', '弑亲棱背螳', '弑亲棱背螳螂（Rhombodera fratricida）']) {
+      expect(findBreedGuide('mantis', name)?.scientificName).toBe('Rhombodera fratricida')
+      expect(searchBreedGuides('mantis', name).map(b => b.id)).toEqual(['rhombodera-fratricida'])
+    }
+  })
 })
