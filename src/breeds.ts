@@ -154,7 +154,11 @@ export const BREED_GUIDES: BreedGuide[] = [
   },
   {
     id: 'rhombodera-fratricida', species: 'mantis', name: '弑菱背螳', scientificName: 'Rhombodera fratricida',
-    aliases: ['弑亲菱背螳', '弑亲菱斧螳', '夺嫡菱背螳', '弑菱背螳（Rhombodera fratricida）', '弑亲菱背螳（Rhombodera fratricida）'],
+    aliases: [
+      '弑菱背螳螂', '弑亲菱背螳', '弑亲菱背螳螂', '弑亲棱背螳', '弑亲棱背螳螂', '弑棱背螳', '弑棱背螳螂',
+      '弑亲菱斧螳', '夺嫡菱背螳', '夺嫡菱背螳螂', '夺嫡棱背螳', '夺嫡棱背螳螂',
+      '弑菱背螳（Rhombodera fratricida）', '弑亲菱背螳（Rhombodera fratricida）', '弑亲棱背螳螂（Rhombodera fratricida）',
+    ],
     tags: ['大型盾螳', '枝叶栖居', '单独饲养', '注意积热'],
     summary: '体形较大的菱背螳，前胸呈盾状扩展，前足强健；利用枝叶攀附、停留和捕食。',
     origin: '印度—马来区，婆罗洲等地有记录', habitat: '有枝叶和攀附支点的植被环境', activity: '在枝叶间停留、捕食，蜕皮时需要牢固倒挂',
