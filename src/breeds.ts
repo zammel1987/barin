@@ -206,17 +206,24 @@ export const BREED_GUIDES: BreedGuide[] = [
   },
 ]
 
-const normalize = (s: string) => s.toLowerCase().replace(/[\s（）()·.\-_]/g, '')
+const normalize = (s: string) => s.normalize('NFKC').toLowerCase().replace(/[\s\u200b-\u200d\ufeff（）()·.\-_/、，,:：]/g, '')
 const namesOf = (b: BreedGuide) => [b.name, b.scientificName, ...b.aliases]
 
-// 精确匹配名称/别名，且限制物种；不把含糊的“王蛇”“紫蜘蛛”强行当成某个品种。
+// 兼容“中文别名（学名/英文名）”及反向写法；两部分都必须是同一品种的完整名称。
+const matchesName = (b: BreedGuide, key: string) => {
+  const names = namesOf(b).map(normalize)
+  return names.some(first => first === key || names.some(second => first + second === key))
+}
+
+// 限制物种且只接受唯一匹配，不把含糊的“王蛇”“紫蜘蛛”强行当成某个品种。
 export function findBreedGuide(species: Species, breed: string): BreedGuide | undefined {
   const key = normalize(breed)
-  return key ? BREED_GUIDES.find(b => b.species === species && namesOf(b).some(n => normalize(n) === key)) : undefined
+  const matches = key ? BREED_GUIDES.filter(b => b.species === species && matchesName(b, key)) : []
+  return matches.length === 1 ? matches[0] : undefined
 }
 
 export function searchBreedGuides(species: Species | 'all', query: string) {
   const key = normalize(query)
   return BREED_GUIDES.filter(b => (species === 'all' || b.species === species) &&
-    (!key || [...namesOf(b), ...b.tags].some(n => normalize(n).includes(key))))
+    (!key || matchesName(b, key) || [...namesOf(b), ...b.tags].some(n => normalize(n).includes(key))))
 }
