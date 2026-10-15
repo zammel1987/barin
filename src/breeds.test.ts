@@ -40,6 +40,26 @@ describe('品种资料匹配与搜索', () => {
     expect(findBreedGuide('snake', 'African twig mantis')).toBeUndefined()
     expect(searchBreedGuides('mantis', '种级待确认').map(b => b.id)).toEqual(['budwing-mantis'])
   })
+  it('高冠幽灵旧档案的中文别名与英文或学名组合也能匹配', () => {
+    for (const name of [
+      '高冠幽灵螳（Phyllocrania paradoxa）',
+      '高冠幽灵螳螂（Ghost Mantis）',
+      '高冠幽灵 / Phyllocrania paradoxa',
+      'Phyllocrania paradoxa（高冠幽灵螳螂）',
+      '高冠幽灵螳螂\u200b',
+    ]) {
+      expect(findBreedGuide('mantis', name)?.id, name).toBe('ghost-mantis')
+      expect(searchBreedGuides('mantis', name).map(b => b.id), name).toEqual(['ghost-mantis'])
+    }
+  })
+  it('组合名称只允许同一品种的完整名称，不靠包含关键字误配', () => {
+    expect(findBreedGuide('spider', '红绿橙 / Chromatopelma cyaneopubescens')?.id).toBe('gbb')
+    expect(findBreedGuide('snake', '玉米蛇（Corn Snake）')?.id).toBe('corn-snake')
+    for (const name of ['高冠幽灵螳螂（Popa spurca）', '高冠幽灵螳螂未知品种', 'Phyllocrania sp.', '非高冠幽灵螳螂']) {
+      expect(findBreedGuide('mantis', name), name).toBeUndefined()
+    }
+    expect(findBreedGuide('spider', '高冠幽灵螳（Phyllocrania paradoxa）')).toBeUndefined()
+  })
   it('每份资料名称唯一，且包含行为、照顾要点和可查来源', () => {
     expect(new Set(BREED_GUIDES.map(b => b.id)).size).toBe(BREED_GUIDES.length)
     for (const b of BREED_GUIDES) {
