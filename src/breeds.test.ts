@@ -49,4 +49,13 @@ describe('品种资料匹配与搜索', () => {
       for (const source of b.sources) expect(new URL(source.url).protocol).toBe('https:')
     }
   })
+  it('菱背螳按拉丁名精确匹配，混用中文名称只能检索，不能自动认作同种', () => {
+    expect(findBreedGuide('mantis', 'Rhombodera basalis')?.id).toBe('rhombodera-basalis')
+    expect(findBreedGuide('mantis', '基菱背螳')?.id).toBe('rhombodera-basalis')
+    expect(findBreedGuide('mantis', '弑亲菱背螳')).toBeUndefined()
+    expect(findBreedGuide('mantis', 'Rhombodera fratricida')).toBeUndefined()
+    const results = searchBreedGuides('mantis', '弑亲菱背螳')
+    expect(results.map(b => b.id)).toEqual(['rhombodera-basalis'])
+    expect(results[0].identification).toContain('两者不是同一种')
+  })
 })

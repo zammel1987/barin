@@ -10,7 +10,7 @@ import Settings from './Settings'
 import Calendar from './Calendar'
 import BatchLog from './BatchLog'
 
-export type View = { name: 'home' } | { name: 'pet'; id: string } | { name: 'petForm'; id?: string } | { name: 'settings' } | { name: 'calendar' } | { name: 'batch' } | { name: 'guide'; species?: Species }
+export type View = { name: 'home' } | { name: 'pet'; id: string } | { name: 'petForm'; id?: string } | { name: 'settings' } | { name: 'calendar' } | { name: 'batch' } | { name: 'guide'; species?: Species; breedId?: string; petId?: string }
 export interface ToastMsg { text: string; undo?: () => Promise<void> }
 
 const TITLES: Record<View['name'], string> = { home: '爬宠饲养记录', pet: '', petForm: '', settings: '设置与备份', calendar: '日历', batch: '批量记录', guide: '品种图鉴' }
@@ -56,11 +56,18 @@ export default function App() {
   const ctx: Ctx = { pets, records, reload, go: setView, toast }
   const pet = view.name === 'pet' ? pets.find(p => p.id === view.id) : undefined
   const title = view.name === 'pet' ? pet?.name ?? '' : view.name === 'petForm' ? (view.id ? '编辑宠物' : '添加宠物') : TITLES[view.name]
+  function back() {
+    if (view.name === 'guide') {
+      if (view.petId) { setView({ name: 'pet', id: view.petId }); return }
+      if (view.breedId) { setView({ name: 'guide', species: view.species }); return }
+    }
+    setView({ name: 'home' })
+  }
 
   return (
     <div className="app">
       <header className="topbar">
-        {view.name !== 'home' ? <button className="icon" onClick={() => setView({ name: 'home' })} aria-label="返回">‹</button> : <span className="logo">🦎</span>}
+        {view.name !== 'home' ? <button className="icon" onClick={back} aria-label="返回">‹</button> : <span className="logo">🦎</span>}
         <h1>{title}</h1>
         {view.name === 'home' && <>
           <button className="icon" onClick={() => setView({ name: 'calendar' })} aria-label="日历">📅</button>
@@ -75,7 +82,8 @@ export default function App() {
           : view.name === 'petForm' ? <PetForm {...ctx} pet={pets.find(p => p.id === view.id)} />
           : view.name === 'calendar' ? <Calendar {...ctx} />
           : view.name === 'batch' ? <BatchLog {...ctx} />
-          : view.name === 'guide' ? <BreedLibrary initialSpecies={view.species} />
+          : view.name === 'guide' ? <BreedLibrary initialSpecies={view.species} breedId={view.breedId}
+            onOpen={breedId => setView({ name: 'guide', species: view.species, petId: view.petId, breedId })} />
           : <Settings {...ctx} />}
       </main>
       {toastMsg && (

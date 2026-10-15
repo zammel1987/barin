@@ -92,11 +92,14 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
         {pet.notes && <p className="muted pre">{pet.notes}</p>}
       </section>
 
-      {breedGuide ? <BreedCard guide={breedGuide} compact /> : (
+      {breedGuide ? <>
+        <BreedCard guide={breedGuide} compact />
+        <button className="ghost export-pet" onClick={() => go({ name: 'guide', breedId: breedGuide.id, species: pet.species, petId: pet.id })}>查看本品种图鉴</button>
+      </> : (
         <section className="panel">
           <h3>品种资料</h3>
           <p className="muted">{pet.breed ? `尚未匹配「${pet.breed}」的资料，可在编辑页选择已收录品种。` : '填写具体品种后，这里会展示它的特点与习性。'}</p>
-          <button className="ghost sm-btn" onClick={() => go({ name: 'guide', species: pet.species })}>浏览{sp.label}图鉴</button>
+          <button className="ghost sm-btn" onClick={() => go({ name: 'guide', species: pet.species, petId: pet.id })}>选择品种查看图鉴</button>
         </section>
       )}
 

@@ -6,6 +6,7 @@ export interface BreedGuide {
   name: string
   scientificName: string
   aliases: string[]
+  searchTerms?: string[] // 仅帮助检索的混用名称，不作为准确的品种匹配别名
   tags: string[]
   summary: string
   identification?: string
@@ -136,6 +137,25 @@ export const BREED_GUIDES: BreedGuide[] = [
     ],
   },
   {
+    id: 'rhombodera-basalis', species: 'mantis', name: '基菱背螳（马来西亚巨盾螳）', scientificName: 'Rhombodera basalis',
+    aliases: ['基菱背螳', '基菱斧螳', '马来西亚巨盾螳', 'Malaysian Shield Mantis', 'Giant Malaysian Shield Mantis'],
+    searchTerms: ['弑亲菱背螳', '弑亲菱斧螳'],
+    tags: ['宽盾形前胸', '枝叶栖居', '捕食积极', '单独饲养'],
+    summary: '体形较大的绿色螳螂，前胸背板向两侧扩展，形成醒目的叶片状盾形轮廓，常在枝叶间攀附和捕食。',
+    identification: '本条资料对应 Rhombodera basalis（基菱背螳／马来西亚巨盾螳）。“弑亲菱背螳／弑亲菱斧螳”常用于 Rhombodera fratricida；两者不是同一种，请以销售标签的拉丁名核对。',
+    origin: '东南亚，见于马来西亚等地', habitat: '灌丛、树木和枝叶之间', activity: '会在枝叶间移动，也会主动捕捉经过的昆虫',
+    diet: '按体型选择果蝇、苍蝇、小蟋蟀或蟑螂等饲料昆虫',
+    behavior: '捕食反应较积极，个体性情有差异；有同类相食风险，应单独饲养。',
+    housing: '提供稳固枝条和可抓附的顶部，随体型扩大空间；盒高至少约体长三倍、宽至少约两倍，悬挂点下留出蜕皮净空。',
+    care: '保持温暖、适当水分与充分通风，用少量喷雾提供饮水机会；按实际蒸发和腹部饱满程度调整照顾与投喂。',
+    caution: '捕食积极不表示需要持续加餐；蜕皮前后减少干扰并及时取出活饵，避免闷湿和底材积水。',
+    sources: [
+      { title: 'Insectarium：Rhombodera basalis 饲养与繁殖观察', url: 'https://www.insectarium.cz/kudlanky/soubory/rhombodera.htm' },
+      { title: 'Appalachian Tarantulas：巨盾螳资料', url: 'https://www.appalachiantarantulas.com/care-guides/rhombodera-basalis' },
+      { title: 'Tropicals：基菱斧螳与弑亲菱斧螳名称对照', url: 'https://tropicals.cn/species/compare/rhombodera-basalis/rhombodera-fratricida' },
+    ],
+  },
+  {
     id: 'orchid-mantis', species: 'mantis', name: '兰花螳螂', scientificName: 'Hymenopus coronatus',
     aliases: ['兰花螳', 'Orchid Mantis'],
     tags: ['花朵拟态', '雌雄体型差异大', '偏好飞虫', '重视通风'],
@@ -180,5 +200,5 @@ export function findBreedGuide(species: Species, breed: string): BreedGuide | un
 export function searchBreedGuides(species: Species | 'all', query: string) {
   const key = normalize(query)
   return BREED_GUIDES.filter(b => (species === 'all' || b.species === species) &&
-    (!key || [...namesOf(b), ...b.tags].some(n => normalize(n).includes(key))))
+    (!key || [...namesOf(b), ...b.tags, ...(b.searchTerms ?? [])].some(n => normalize(n).includes(key))))
 }
