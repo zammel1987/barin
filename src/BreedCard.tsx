@@ -2,6 +2,7 @@ import { BREED_REVIEWED_AT, type BreedGuide } from './breeds'
 import { SPECIES } from './types'
 
 export default function BreedCard({ guide, compact = false }: { guide: BreedGuide; compact?: boolean }) {
+  const identification = guide.identification && <p className="breed-caution" role="note">🔎 {guide.identification}</p>
   return (
     <article className={`panel breed-card ${compact ? 'compact' : ''}`}>
       <div className="row">
@@ -10,7 +11,7 @@ export default function BreedCard({ guide, compact = false }: { guide: BreedGuid
       </div>
       <div className="breed-tags">{guide.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
       <p className="breed-summary">{guide.summary}</p>
-      {guide.identification && <p className="breed-caution" role="note">🔎 {guide.identification}</p>}
+      {!compact && identification}
       <dl className="breed-facts">
         <div><dt>栖居方式</dt><dd>{guide.habitat}</dd></div>
         <div><dt>活动习惯</dt><dd>{guide.activity}</dd></div>
@@ -18,6 +19,7 @@ export default function BreedCard({ guide, compact = false }: { guide: BreedGuid
       </dl>
       <details className="breed-more" open={compact ? undefined : true}>
         <summary>习性与饲养要点</summary>
+        {compact && identification}
         <dl className="breed-notes">
           <div><dt>原生分布</dt><dd>{guide.origin}</dd></div>
           <div><dt>性格与行为</dt><dd>{guide.behavior}</dd></div>
