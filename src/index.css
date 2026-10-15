@@ -135,3 +135,29 @@ details.more[open] { display: grid; }
 .premolt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .next.row { gap: 8px; }
 .next .primary.sm-btn { padding: 4px 12px; }
+/* 品种资料：窄屏可换行，沿用明暗主题与原有卡片。 */
+.breed-entry { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px; margin-bottom: 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
+.breed-entry > span:first-child { font-size: 26px; }
+.breed-entry small { display: block; color: var(--muted); margin-top: 3px; font-size: 12px; }
+.breed-library > p { margin: 4px 0 12px; }
+.breed-search { display: grid; gap: 6px; font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+.breed-search input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); }
+.breed-card { min-width: 0; gap: 10px; }
+.breed-card p { margin: 0; }
+.breed-latin { color: var(--muted); font-size: 12px; font-style: italic; overflow-wrap: anywhere; margin-top: 3px !important; }
+.breed-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.breed-tags span { color: var(--accent); background: var(--accent-soft); border-radius: 999px; font-size: 12px; padding: 4px 9px; }
+.breed-summary { font-size: 14px; line-height: 1.7; }
+.breed-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.breed-facts > div { background: var(--bg); border-radius: 10px; padding: 9px; }
+.breed-card dt { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.breed-card dd { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.breed-more { border-top: 1px solid var(--line); padding-top: 10px; }
+.breed-more summary { color: var(--accent); cursor: pointer; font-size: 14px; font-weight: 600; }
+.breed-notes { display: grid; gap: 12px; margin: 12px 0; }
+.breed-caution { background: var(--accent-soft); border-radius: 9px; padding: 10px; font-size: 13px; line-height: 1.6; margin-bottom: 10px !important; }
+.breed-sources { display: grid; gap: 6px; margin-top: 12px; }
+.breed-sources a { color: var(--accent); font-size: 12px; overflow-wrap: anywhere; }
+.breed-library .breed-card { margin-bottom: 16px; }
+@media (max-width: 380px) { .breed-facts { grid-template-columns: 1fr; } }

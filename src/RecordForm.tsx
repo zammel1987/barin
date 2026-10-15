@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ToastMsg } from './App'
-import { confirmFeed, saveMolt, undoMolt } from './actions'
+import { confirmFeed, saveMolt } from './actions'
 import { deleteRecord, putRecord, uid } from './db'
-import { addDays, dayDiff, newMoltRecord, recentFoods, startOfDay, toLocalInput } from './logic'
+import { addDays, dayDiff, moltEndsPremolt, newMoltRecord, recentFoods, startOfDay, toLocalInput } from './logic'
 import { compressImage } from './photo'
 import NumInput from './NumInput'
 import { FEED_RESULTS, RECORD_TYPES, SPECIES, type FeedResult, type LogRecord, type Pet, type RecordType } from './types'
@@ -40,19 +40,17 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload, t
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (!rec && type === 'feed' && !confirmFeed(pet, records)) return
-    // 新蜕皮记录：结束蜕皮前期并按实际蜕皮时间记下前期天数
+    // 时间判断与前期天数统一在保存事务中计算，撤销只恢复实际被清除的标记。
     const isNewMolt = !rec && type === 'molt'
-    const premoltSince = pet.premoltSince
-    const saved = isNewMolt && premoltSince != null ? { ...r, premoltDays: Math.max(0, dayDiff(premoltSince, r.at)) } : r
-    if (isNewMolt) await saveMolt(pet, saved)
-    else await putRecord(saved)
+    const result = isNewMolt ? await saveMolt(pet, r) : undefined
+    if (!isNewMolt) await putRecord(r)
     await reload()
     onClose()
     if (!rec) toast({
       text: `已记录${RECORD_TYPES[type].label}`,
       undo: async () => {
-        if (isNewMolt) await undoMolt(pet.id, saved.id, premoltSince)
-        else await deleteRecord(saved.id)
+        if (result) await result.undo()
+        else await deleteRecord(r.id)
         await reload()
       },
     })
@@ -114,7 +112,9 @@ export default function RecordForm({ pet, records, type, rec, onClose, reload, t
             <button type="button" className={r.moltComplete !== false ? 'on' : ''} onClick={() => set('moltComplete', true)}>完整</button>
             <button type="button" className={r.moltComplete === false ? 'on' : ''} onClick={() => set('moltComplete', false)}>不完整/卡皮</button>
           </div>
-          {!rec && pet.premoltSince != null && <p className="muted small">保存后将结束「{SPECIES[pet.species].premoltName}」状态。</p>}
+          {!rec && pet.premoltSince != null && <p className="muted small">{moltEndsPremolt(pet, r.at)
+            ? `保存后将结束「${SPECIES[pet.species].premoltName}」状态。`
+            : `这次蜕皮早于当前「${SPECIES[pet.species].premoltName}」，保存后保留当前标记。`}</p>}
         </>}
 
         {type === 'weight' && <label>体重（克）<NumInput decimal required value={r.weight} onChange={v => set('weight', v)} /></label>}

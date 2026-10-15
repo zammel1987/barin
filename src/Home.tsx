@@ -35,6 +35,9 @@ export default function Home({ pets, records, reload, go, toast }: Ctx) {
 
   return (
     <>
+      <button className="breed-entry" onClick={() => go({ name: 'guide' })}>
+        <span aria-hidden="true">📖</span><span className="grow"><b>品种图鉴</b><small>看看它的特点、习性和饲养要点</small></span><span aria-hidden="true">›</span>
+      </button>
       {sync.enabled && sync.error && !sync.offline && (
         <div className="banner">
           <span className="grow">☁️ 同步失败：{sync.error}</span>

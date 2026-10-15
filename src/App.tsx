@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAll, onUpgradeBlocked } from './db'
 import { startSync } from './sync'
-import type { LogRecord, Pet } from './types'
+import type { LogRecord, Pet, Species } from './types'
+import BreedLibrary from './BreedLibrary'
 import Home from './Home'
 import PetDetail from './PetDetail'
 import PetForm from './PetForm'
@@ -9,10 +10,10 @@ import Settings from './Settings'
 import Calendar from './Calendar'
 import BatchLog from './BatchLog'
 
-export type View = { name: 'home' } | { name: 'pet'; id: string } | { name: 'petForm'; id?: string } | { name: 'settings' } | { name: 'calendar' } | { name: 'batch' }
+export type View = { name: 'home' } | { name: 'pet'; id: string } | { name: 'petForm'; id?: string } | { name: 'settings' } | { name: 'calendar' } | { name: 'batch' } | { name: 'guide'; species?: Species }
 export interface ToastMsg { text: string; undo?: () => Promise<void> }
 
-const TITLES: Record<View['name'], string> = { home: '爬宠饲养记录', pet: '', petForm: '', settings: '设置与备份', calendar: '日历', batch: '批量记录' }
+const TITLES: Record<View['name'], string> = { home: '爬宠饲养记录', pet: '', petForm: '', settings: '设置与备份', calendar: '日历', batch: '批量记录', guide: '品种图鉴' }
 
 export default function App() {
   const [pets, setPets] = useState<Pet[]>([])
@@ -74,6 +75,7 @@ export default function App() {
           : view.name === 'petForm' ? <PetForm {...ctx} pet={pets.find(p => p.id === view.id)} />
           : view.name === 'calendar' ? <Calendar {...ctx} />
           : view.name === 'batch' ? <BatchLog {...ctx} />
+          : view.name === 'guide' ? <BreedLibrary initialSpecies={view.species} />
           : <Settings {...ctx} />}
       </main>
       {toastMsg && (

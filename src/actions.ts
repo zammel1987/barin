@@ -1,27 +1,22 @@
-import { deleteRecord, getPet, putPet, putRecord, putRecordAndPet, putRecords, uid } from './db'
+import { putPet, putRecords, saveMoltRecord, undoMoltRecord, uid } from './db'
 import { dayDiff, newMoltRecord, petStatus } from './logic'
 import type { LogRecord, Pet } from './types'
 
 export const markPremolt = (pet: Pet, since = Date.now()) => putPet({ ...pet, premoltSince: since })
 export const endPremolt = (pet: Pet) => putPet({ ...pet, premoltSince: undefined })
 
-// 保存蜕皮记录；如处于蜕皮前期，同一事务中结束该状态
+// 保存新蜕皮；只结束该记录实际发生时已经开始的本次前期。
 export async function saveMolt(pet: Pet, r: LogRecord) {
-  if (pet.premoltSince != null) await putRecordAndPet(r, { ...pet, premoltSince: undefined })
-  else await putRecord(r)
+  if (r.petId !== pet.id) throw new Error('蜕皮记录与宠物不匹配')
+  const { record, endedPremoltSince } = await saveMoltRecord(r)
+  return { record, undo: () => undoMolt(pet.id, record.id, endedPremoltSince) }
 }
-// 撤销蜕皮记录：删除记录，并只恢复蜕皮前期这一项（读取最新宠物资料，避免覆盖期间的其他修改）
-export async function undoMolt(petId: string, recordId: string, premoltSince: number | undefined) {
-  await deleteRecord(recordId)
-  if (premoltSince == null) return
-  const cur = await getPet(petId)
-  if (cur) await putPet({ ...cur, premoltSince })
-}
+// 只恢复本次保存实际清除过的标记。
+export const undoMolt = undoMoltRecord
 // 一键记录蜕皮（龄期自动 +1，蛇的蜕皮次数自动 +1）
 export async function quickMolt(pet: Pet, records: LogRecord[]) {
   const r = newMoltRecord(pet, records, uid())
-  await saveMolt(pet, r)
-  return { record: r, undo: () => undoMolt(pet.id, r.id, pet.premoltSince) }
+  return saveMolt(pet, r)
 }
 
 // 标记所有未取出的剩饵为已取出
