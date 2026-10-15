@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Ctx } from './App'
 import Alerts from './Alerts'
+import BreedCard from './BreedCard'
+import { findBreedGuide } from './breeds'
 import { deleteRecord } from './db'
 import { withExport } from './loadExport'
 import { NextFeed } from './Home'
@@ -50,6 +52,7 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
   const types = (Object.keys(RECORD_TYPES) as RecordType[]).filter(t => pet.species === 'snake' || t !== 'weight' || weights.length)
   const meal = firstMeal(pet, records)
   const archived = !!pet.archivedAt
+  const breedGuide = findBreedGuide(pet.species, pet.breed)
   const gaps = s.history.map(h => h.gapDays).filter((x): x is number => x != null)
   const avgGap = gaps.length ? Math.round(gaps.slice(-3).reduce((a, b) => a + b, 0) / Math.min(3, gaps.length)) : null
 
@@ -88,6 +91,14 @@ export default function PetDetail({ pet, records, reload, go, toast }: Ctx & { p
         {!archived && <PremoltActions pet={pet} records={records} reload={reload} toast={toast} />}
         {pet.notes && <p className="muted pre">{pet.notes}</p>}
       </section>
+
+      {breedGuide ? <BreedCard guide={breedGuide} compact /> : (
+        <section className="panel">
+          <h3>品种资料</h3>
+          <p className="muted">{pet.breed ? `尚未匹配「${pet.breed}」的资料，可在编辑页选择已收录品种。` : '填写具体品种后，这里会展示它的特点与习性。'}</p>
+          <button className="ghost sm-btn" onClick={() => go({ name: 'guide', species: pet.species })}>浏览{sp.label}图鉴</button>
+        </section>
+      )}
 
       {!archived && <>
         <div className="quick wide">

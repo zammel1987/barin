@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPTransaction } from 'idb'
-import { localDate } from './logic'
+import { dayDiff, localDate, moltEndsPremolt } from './logic'
 import { RECORD_TYPES, SPECIES, type LogRecord, type Pet } from './types'
 
 export type Kind = 'pet' | 'record'
@@ -104,6 +104,35 @@ export const putRecords = (rs: LogRecord[]) => write(async (tx, now) => { for (c
 export const deleteRecords = (ids: string[]) => write(async (tx, now) => { for (const id of ids) await del(tx, 'record', id, now) })
 // 在同一事务中写入记录和宠物（例如记录蜕皮同时结束蜕皮前期）
 export const putRecordAndPet = (r: LogRecord, p: Pet) => write(async (tx, now) => { await put(tx, 'record', r, now); await put(tx, 'pet', p, now) })
+
+// 在同一事务内读取最新前期标记、保存新蜕皮并决定是否结束前期。
+// 表单可能打开很久，不能把它持有的旧宠物资料整份写回。
+export async function saveMoltRecord(r: LogRecord) {
+  let endedPremoltSince: number | undefined
+  let saved = r
+  await write(async (tx, now) => {
+    const pet = await tx.objectStore('pets').get(r.petId)
+    if (!pet || r.type !== 'molt') throw new Error('蜕皮记录的宠物不存在或类型不正确')
+    if (moltEndsPremolt(pet, r.at)) endedPremoltSince = pet.premoltSince
+    saved = { ...r, premoltDays: endedPremoltSince == null ? undefined : dayDiff(endedPremoltSince, r.at) }
+    // 先保存记录；任一步失败都由同一事务回滚。
+    await put(tx, 'record', saved, now)
+    if (endedPremoltSince != null) await put(tx, 'pet', { ...pet, premoltSince: undefined }, now)
+  })
+  return { record: saved, endedPremoltSince }
+}
+
+export const undoMoltRecord = (petId: string, recordId: string, endedPremoltSince?: number) => write(async (tx, now) => {
+  await del(tx, 'record', recordId, now)
+  if (endedPremoltSince == null) return
+  const pet = await tx.objectStore('pets').get(petId)
+  if (!pet || pet.archivedAt || pet.premoltSince != null) return
+  const rs = await tx.objectStore('records').index('petId').getAll(petId)
+  // 不覆盖后来新标记的前期，也不把后来已蜕皮的宠物重新标为前期。
+  if (!rs.some(r => r.type === 'molt' && r.at >= endedPremoltSince)) {
+    await put(tx, 'pet', { ...pet, premoltSince: endedPremoltSince }, now)
+  }
+})
 // 删除宠物及其全部记录
 export const deletePet = (id: string) => write(async (tx, now) => {
   for (const rid of await recordIdsOf(tx, id)) await del(tx, 'record', rid, now)

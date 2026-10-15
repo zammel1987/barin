@@ -3,6 +3,8 @@ import type { Ctx } from './App'
 import { deletePet, putPet, uid } from './db'
 import { localDate } from './logic'
 import NumInput from './NumInput'
+import BreedCard from './BreedCard'
+import { BREED_GUIDES, findBreedGuide } from './breeds'
 import { ARCHIVE_REASONS, SPECIES, STAGES, type ArchiveReason, type Pet, type Species, type Stage } from './types'
 
 // 加水/喷雾的默认说明（喷雾只针对需要的品种开启，过度喷雾加通风差对部分蜘蛛有害）
@@ -21,6 +23,8 @@ export default function PetForm({ pet, records, reload, go }: Ctx & { pet?: Pet 
   const [archiving, setArchiving] = useState(false)
   const [archive, setArchive] = useState<{ reason: ArchiveReason; date: string; note: string }>({ reason: 'dead', date: localDate(), note: '' })
   const petRecords = pet ? records.filter(r => r.petId === pet.id) : []
+  const breedGuide = findBreedGuide(f.species, f.breed)
+  const breedOptions = BREED_GUIDES.filter(b => b.species === f.species)
 
   // 只保存填写了且 ≥1 的阶段间隔，其余沿用物种默认值
   const cleaned = (): Pet => ({
@@ -71,7 +75,14 @@ export default function PetForm({ pet, records, reload, go }: Ctx & { pet?: Pet 
         ))}
       </div>}
       <label>名字 *<input value={f.name} onChange={e => set('name', e.target.value)} required placeholder="例如：小黑" /></label>
-      <label>品种<input value={f.breed} onChange={e => set('breed', e.target.value)} placeholder={f.species === 'spider' ? '例如：智利红玫瑰' : f.species === 'snake' ? '例如：玉米蛇' : '例如：兰花螳螂'} /></label>
+      <label>品种<input list="breed-options" value={f.breed} onChange={e => set('breed', e.target.value)} placeholder="输入品种或学名，也可选择下方品种" /></label>
+      <datalist id="breed-options">
+        {breedOptions.flatMap(b => [b.name, b.scientificName, ...b.aliases]).map(n => <option key={n} value={n} />)}
+      </datalist>
+      <div className="chips small" aria-label="已收录品种">
+        {breedOptions.map(b => <button key={b.id} type="button" className={breedGuide?.id === b.id ? 'on' : ''} onClick={() => set('breed', b.name)}>{b.name}</button>)}
+      </div>
+      {breedGuide ? <BreedCard guide={breedGuide} compact /> : <p className="muted small">可自由填写未收录品种；选择已收录品种即可预览特点与习性。</p>}
       <label>性别
         <select value={f.sex} onChange={e => set('sex', e.target.value as Pet['sex'])}>
           <option value="unknown">未知</option><option value="male">公</option><option value="female">母</option>

@@ -338,11 +338,15 @@ export function firstMeal(pet: Pet, records: LogRecord[]) {
   return first ? { at: first.at, day: dayDiff(acquired, first.at) + 1 } : null
 }
 
-// 新蜕皮记录：节肢类龄期自动 +1；处于蜕皮前期时记下前期天数
+// 仅实际发生在当前前期开始之后的蜕皮才属于本次前期（同一时刻允许结束）。
+export const moltEndsPremolt = (pet: Pet, at: number) =>
+  pet.premoltSince != null && Number.isFinite(pet.premoltSince) && Number.isFinite(at) && at >= pet.premoltSince
+
+// 新蜕皮记录：节肢类龄期自动 +1；属于本次前期时记下前期天数
 export function newMoltRecord(pet: Pet, records: LogRecord[], id: string, at = Date.now()): LogRecord {
   return {
     id, petId: pet.id, type: 'molt', at, note: '', moltComplete: true,
     instar: pet.species !== 'snake' ? petGrowth(pet, records, at).instar! + 1 : undefined,
-    premoltDays: pet.premoltSince != null ? Math.max(0, dayDiff(pet.premoltSince, at)) : undefined,
+    premoltDays: moltEndsPremolt(pet, at) ? dayDiff(pet.premoltSince!, at) : undefined,
   }
 }
