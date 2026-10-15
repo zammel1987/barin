@@ -160,4 +160,10 @@ details.more[open] { display: grid; }
 .breed-sources { display: grid; gap: 6px; margin-top: 12px; }
 .breed-sources a { color: var(--accent); font-size: 12px; overflow-wrap: anywhere; }
 .breed-library .breed-card { margin-bottom: 16px; }
+.breed-choices { display: grid; gap: 10px; }
+.breed-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 12px; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; }
+.breed-choice .breed-latin { display: block; }
+.breed-choice b { font-size: 15px; overflow-wrap: anywhere; }
+.breed-choice:hover, .breed-choice:focus-visible { border-color: var(--accent); }
 @media (max-width: 380px) { .breed-facts { grid-template-columns: 1fr; } }
