@@ -6,7 +6,6 @@ export interface BreedGuide {
   name: string
   scientificName: string
   aliases: string[]
-  searchTerms?: string[] // 仅帮助检索的混用名称，不作为准确的品种匹配别名
   tags: string[]
   summary: string
   identification?: string
@@ -139,10 +138,8 @@ export const BREED_GUIDES: BreedGuide[] = [
   {
     id: 'rhombodera-basalis', species: 'mantis', name: '基菱背螳（马来西亚巨盾螳）', scientificName: 'Rhombodera basalis',
     aliases: ['基菱背螳', '基菱斧螳', '马来西亚巨盾螳', 'Malaysian Shield Mantis', 'Giant Malaysian Shield Mantis'],
-    searchTerms: ['弑亲菱背螳', '弑亲菱斧螳'],
     tags: ['宽盾形前胸', '枝叶栖居', '捕食积极', '单独饲养'],
     summary: '体形较大的绿色螳螂，前胸背板向两侧扩展，形成醒目的叶片状盾形轮廓，常在枝叶间攀附和捕食。',
-    identification: '本条资料对应 Rhombodera basalis（基菱背螳／马来西亚巨盾螳）。“弑亲菱背螳／弑亲菱斧螳”常用于 Rhombodera fratricida；两者不是同一种，请以销售标签的拉丁名核对。',
     origin: '东南亚，见于马来西亚等地', habitat: '灌丛、树木和枝叶之间', activity: '会在枝叶间移动，也会主动捕捉经过的昆虫',
     diet: '按体型选择果蝇、苍蝇、小蟋蟀或蟑螂等饲料昆虫',
     behavior: '捕食反应较积极，个体性情有差异；有同类相食风险，应单独饲养。',
@@ -153,6 +150,23 @@ export const BREED_GUIDES: BreedGuide[] = [
       { title: 'Insectarium：Rhombodera basalis 饲养与繁殖观察', url: 'https://www.insectarium.cz/kudlanky/soubory/rhombodera.htm' },
       { title: 'Appalachian Tarantulas：巨盾螳资料', url: 'https://www.appalachiantarantulas.com/care-guides/rhombodera-basalis' },
       { title: 'Tropicals：基菱斧螳与弑亲菱斧螳名称对照', url: 'https://tropicals.cn/species/compare/rhombodera-basalis/rhombodera-fratricida' },
+    ],
+  },
+  {
+    id: 'rhombodera-fratricida', species: 'mantis', name: '弑菱背螳', scientificName: 'Rhombodera fratricida',
+    aliases: ['弑亲菱背螳', '弑亲菱斧螳', '夺嫡菱背螳', '弑菱背螳（Rhombodera fratricida）', '弑亲菱背螳（Rhombodera fratricida）'],
+    tags: ['大型盾螳', '枝叶栖居', '单独饲养', '注意积热'],
+    summary: '体形较大的菱背螳，前胸呈盾状扩展，前足强健；利用枝叶攀附、停留和捕食。',
+    origin: '印度—马来区，婆罗洲等地有记录', habitat: '有枝叶和攀附支点的植被环境', activity: '在枝叶间停留、捕食，蜕皮时需要牢固倒挂',
+    diet: '幼体从适口果蝇开始，随体型增大选择苍蝇等饲料昆虫',
+    behavior: '属于大型菱背螳；应观察个体实际的捕食和腹部状态，分盒饲养，避免同类互相捕食。',
+    housing: '随成长及时扩大盒体，设置牢固枝条及粗糙的攀附面；顶部能抓牢，悬挂点下留足伸展和蜕皮净空。',
+    care: '本种饲主经验特别强调避免照搬其他大型绿螳的高温养法，留意夏季积热和直晒；测量实际温湿度，兼顾饮水、通风与清洁。',
+    caution: '补水后及时检查底部残饵、粪便及受潮枝条；不要向幼体大流量直喷，临近蜕皮或羽化时减少移动和干扰。',
+    sources: [
+      { title: 'GBIF：Rhombodera fratricida 分类记录', url: 'https://www.gbif.org/taxon/VF8D9' },
+      { title: '冰叔会整活：本种饲养经验（环境、攀附与清洁）', url: 'https://www.bilibili.com/opus/1056340085444706307' },
+      { title: 'PanTerra Pets：螳螂通用空间与单养要点', url: 'https://www.panterrapets.com/pages/care' },
     ],
   },
   {
@@ -200,5 +214,5 @@ export function findBreedGuide(species: Species, breed: string): BreedGuide | un
 export function searchBreedGuides(species: Species | 'all', query: string) {
   const key = normalize(query)
   return BREED_GUIDES.filter(b => (species === 'all' || b.species === species) &&
-    (!key || [...namesOf(b), ...b.tags, ...(b.searchTerms ?? [])].some(n => normalize(n).includes(key))))
+    (!key || [...namesOf(b), ...b.tags].some(n => normalize(n).includes(key))))
 }

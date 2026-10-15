@@ -49,13 +49,16 @@ describe('品种资料匹配与搜索', () => {
       for (const source of b.sources) expect(new URL(source.url).protocol).toBe('https:')
     }
   })
-  it('菱背螳按拉丁名精确匹配，混用中文名称只能检索，不能自动认作同种', () => {
+  it('弑菱背螳及旧中文别名对应 fratricida，与 basalis 独立匹配', () => {
     expect(findBreedGuide('mantis', 'Rhombodera basalis')?.id).toBe('rhombodera-basalis')
     expect(findBreedGuide('mantis', '基菱背螳')?.id).toBe('rhombodera-basalis')
-    expect(findBreedGuide('mantis', '弑亲菱背螳')).toBeUndefined()
-    expect(findBreedGuide('mantis', 'Rhombodera fratricida')).toBeUndefined()
-    const results = searchBreedGuides('mantis', '弑亲菱背螳')
-    expect(results.map(b => b.id)).toEqual(['rhombodera-basalis'])
-    expect(results[0].identification).toContain('两者不是同一种')
+    for (const name of ['弑菱背螳', '弑亲菱背螳', '弑亲菱斧螳', '夺嫡菱背螳', 'Rhombodera fratricida', '弑菱背螳Rhombodera fratricida']) {
+      const guide = findBreedGuide('mantis', name)!
+      expect(guide.id).toBe('rhombodera-fratricida')
+      expect(guide.name).toBe('弑菱背螳')
+      expect(guide.scientificName).toBe('Rhombodera fratricida')
+    }
+    expect(searchBreedGuides('mantis', '弑亲菱背螳').map(b => b.id)).toEqual(['rhombodera-fratricida'])
+    expect(findBreedGuide('spider', 'Rhombodera fratricida')).toBeUndefined()
   })
 })
